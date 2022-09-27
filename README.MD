@@ -1,12 +1,8 @@
-# DENEME
+# deneme 
+## deneme
+-list item 1
+-list item 2
 
-## ALT BILGI
-
-SDAFBHASB FASF 
-AGDSGSDAG
-ASDGASDGASD
-GSADG
-[LOREM IPSUM](HTTP://GOOGLE.COM)
-
-
-sadasf as
+*list
+*list* **bolt**
+[dasax](http://google.com)
