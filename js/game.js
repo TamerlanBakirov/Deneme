@@ -259,7 +259,7 @@ function computeGeometry() {
   const rows = maxR - minR + 1;
   const cols = maxC - minC + 1;
   state.geom = {
-    minR, minC, cell, pad,
+    minR, minC, maxR, maxC, rows, cols, cell, pad,
     width: cols * cell + pad * 2,
     height: rows * cell + pad * 2,
   };
@@ -278,10 +278,53 @@ function renderBoard() {
   el.board.setAttribute("viewBox", `0 0 ${g.width} ${g.height}`);
   el.board.innerHTML = "";
 
+  el.board.appendChild(buildGrid());
+
+  let i = 0;
   for (const arrow of state.arrows) {
     if (arrow.removed) continue;
-    el.board.appendChild(buildArrowEl(arrow));
+    const groupEl = buildArrowEl(arrow);
+    groupEl.classList.add("enter");
+    groupEl.style.animationDelay = (i * 0.028).toFixed(3) + "s";
+    groupEl.addEventListener("animationend", function once() {
+      groupEl.classList.remove("enter");
+      groupEl.style.animationDelay = "";
+      groupEl.removeEventListener("animationend", once);
+    });
+    el.board.appendChild(groupEl);
+    i++;
   }
+}
+
+// Soft rounded panel plus a faint dot at every grid cell, so the puzzle reads
+// as a board rather than floating arrows.
+function buildGrid() {
+  const g = state.geom;
+  const grp = document.createElementNS(SVG_NS, "g");
+  grp.setAttribute("class", "grid");
+
+  const margin = g.cell * 0.55;
+  const panel = document.createElementNS(SVG_NS, "rect");
+  panel.setAttribute("class", "board-panel");
+  panel.setAttribute("x", String(g.pad - margin));
+  panel.setAttribute("y", String(g.pad - margin));
+  panel.setAttribute("width", String(g.cols * g.cell + margin * 2));
+  panel.setAttribute("height", String(g.rows * g.cell + margin * 2));
+  panel.setAttribute("rx", String(g.cell * 0.5));
+  grp.appendChild(panel);
+
+  for (let r = g.minR; r <= g.maxR; r++) {
+    for (let c = g.minC; c <= g.maxC; c++) {
+      const { x, y } = cellToXY(r, c);
+      const dot = document.createElementNS(SVG_NS, "circle");
+      dot.setAttribute("class", "grid-dot");
+      dot.setAttribute("cx", x.toFixed(2));
+      dot.setAttribute("cy", y.toFixed(2));
+      dot.setAttribute("r", "2");
+      grp.appendChild(dot);
+    }
+  }
+  return grp;
 }
 
 function buildArrowEl(arrow) {
@@ -319,7 +362,17 @@ function buildArrowEl(arrow) {
   tri.setAttribute("points", `${p1} ${p2} ${p3}`);
   group.appendChild(tri);
 
-  group.addEventListener("click", () => handleClick(arrow, group));
+  const press = () => { if (!arrow.removed) group.classList.add("press"); };
+  const release = () => group.classList.remove("press");
+  group.addEventListener("pointerdown", press);
+  group.addEventListener("pointerup", release);
+  group.addEventListener("pointerleave", release);
+  group.addEventListener("pointercancel", release);
+
+  group.addEventListener("click", () => {
+    release();
+    handleClick(arrow, group);
+  });
   return group;
 }
 
@@ -341,91 +394,89 @@ function isRemovable(arrow) {
   return true;
 }
 
-// Send the arrow off the board like a train pulling out: the head leads off
-// in its travel direction, and each body segment follows the exact same path
-// (through any bends) that the segment ahead of it took, then exits the same
-// clear lane — so it never crosses another arrow's cells.
+// Drive the arrow off the board like a train leaving the station. The whole
+// arrow — body, head and arrowhead — rides one shared path: its own bent shape
+// (tail → head) extended straight off the board in the travel direction. Every
+// vertex advances the same arc-length each frame, so the shape stays rigid (no
+// stretching) while each body segment faithfully tracks the bends ahead of it.
+// Because the head's lane is already clear, the train never touches another
+// arrow.
 function animateLeave(arrow, group, onDone) {
   const g = state.geom;
+  const cell = g.cell;
   const { dr, dc } = DIRS[arrow.dir];
-  const dirUnit = { x: dc, y: dr };
-  const exitDist = Math.max(g.width, g.height) * 1.2;
+  const dir = { x: dc, y: dr };
+  const perp = { x: -dr, y: dc };
 
   const pts = arrow.cells.map(([r, c]) => cellToXY(r, c));
   const n = pts.length;
   const head = pts[n - 1];
-  const exitPoint = { x: head.x + dirUnit.x * exitDist, y: head.y + dirUnit.y * exitDist };
+  const exitDist = Math.max(g.width, g.height) * 1.3;
+  const exitPoint = { x: head.x + dir.x * exitDist, y: head.y + dir.y * exitDist };
   const waypoints = pts.concat([exitPoint]);
 
-  const lens = [];
-  for (let i = 0; i < n; i++) {
+  // Cumulative arc length along the shared path.
+  const seg = [];
+  for (let i = 0; i < waypoints.length - 1; i++) {
     const a = waypoints[i], b = waypoints[i + 1];
-    lens.push(Math.hypot(b.x - a.x, b.y - a.y));
+    seg.push(Math.hypot(b.x - a.x, b.y - a.y) || 1);
   }
   const cum = [0];
-  for (let i = 0; i < n; i++) cum.push(cum[i] + lens[i]);
-  const total = cum[n];
+  for (let i = 0; i < seg.length; i++) cum.push(cum[i] + seg[i]);
+  const totalArc = cum[cum.length - 1];
 
-  function pathPointAt(arcLen) {
-    if (arcLen <= 0) return waypoints[0];
-    if (arcLen >= total) {
-      const over = arcLen - total;
-      return { x: exitPoint.x + dirUnit.x * over, y: exitPoint.y + dirUnit.y * over };
+  // Position of a point at arc-length s, extrapolating past either end.
+  function at(s) {
+    if (s <= 0) {
+      const a = waypoints[0], b = waypoints[1];
+      const ux = (b.x - a.x) / seg[0], uy = (b.y - a.y) / seg[0];
+      return { x: a.x + ux * s, y: a.y + uy * s };
     }
-    for (let i = 0; i < n; i++) {
-      if (arcLen <= cum[i + 1]) {
-        const t = (arcLen - cum[i]) / lens[i];
+    for (let i = 0; i < seg.length; i++) {
+      if (s <= cum[i + 1] || i === seg.length - 1) {
+        const t = (s - cum[i]) / seg[i];
         const a = waypoints[i], b = waypoints[i + 1];
         return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
       }
     }
-    return exitPoint;
+    return waypoints[waypoints.length - 1];
   }
 
   const poly = group.querySelector(".arrow-stroke");
   const tri = group.querySelector(".arrow-head");
+  const hw = cell * 0.3;
 
-  const tipOrig = { x: head.x + dc * g.cell * 0.42, y: head.y + dr * g.cell * 0.42 };
-  const baseOrig = { x: head.x - dc * g.cell * 0.12, y: head.y - dr * g.cell * 0.12 };
-  const hw = g.cell * 0.3;
-  const perp = { x: -dr, y: dc };
-  const triP2 = { x: baseOrig.x + perp.x * hw, y: baseOrig.y + perp.y * hw };
-  const triP3 = { x: baseOrig.x - perp.x * hw, y: baseOrig.y - perp.y * hw };
-  const headBack = n === 1 ? { x: head.x - dc * g.cell, y: head.y - dr * g.cell } : null;
+  const headArc = cum[n - 1];
+  // Polyline runs from the tail up to the arrowhead base.
+  const bodyArcs = [];
+  for (let i = 0; i < n - 1; i++) bodyArcs.push(cum[i]);
+  bodyArcs.push(headArc - cell * 0.12);
+  const baseArc = headArc - cell * 0.12;
+  const tipArc = headArc + cell * 0.42;
 
-  const duration = Math.min(900, 380 + (n - 1) * 90);
+  const duration = Math.min(640, 360 + (n - 1) * 45);
   const start = performance.now();
 
   function frame(now) {
     const t = Math.min(1, (now - start) / duration);
-    const ease = t * t; // accelerate like a departing train
-    const d = total * ease;
+    // Start moving immediately, then accelerate away.
+    const eased = 0.2 * t + 0.8 * t * t;
+    const d = totalArc * eased;
 
-    const newBase = { x: baseOrig.x + dirUnit.x * d, y: baseOrig.y + dirUnit.y * d };
-    let linePts;
-    if (n === 1) {
-      linePts = [
-        { x: headBack.x + dirUnit.x * d, y: headBack.y + dirUnit.y * d },
-        newBase,
-      ];
-    } else {
-      const newPts = pts.slice(0, -1).map((_, i) => pathPointAt(cum[i] + d));
-      linePts = newPts.concat([newBase]);
-    }
-    poly.setAttribute("points", linePts.map((p) => `${p.x},${p.y}`).join(" "));
+    const linePts = bodyArcs.map((s) => at(s + d));
+    poly.setAttribute("points", linePts.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" "));
 
-    const tip = { x: tipOrig.x + dirUnit.x * d, y: tipOrig.y + dirUnit.y * d };
-    const p2 = { x: triP2.x + dirUnit.x * d, y: triP2.y + dirUnit.y * d };
-    const p3 = { x: triP3.x + dirUnit.x * d, y: triP3.y + dirUnit.y * d };
-    tri.setAttribute("points", `${tip.x},${tip.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`);
+    const c = at(baseArc + d);
+    const tp = at(tipArc + d);
+    const p2 = { x: c.x + perp.x * hw, y: c.y + perp.y * hw };
+    const p3 = { x: c.x - perp.x * hw, y: c.y - perp.y * hw };
+    tri.setAttribute("points",
+      `${tp.x.toFixed(2)},${tp.y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)} ${p3.x.toFixed(2)},${p3.y.toFixed(2)}`);
 
-    group.style.opacity = t < 0.7 ? "1" : String(Math.max(0, 1 - (t - 0.7) / 0.3));
+    group.style.opacity = t < 0.78 ? "1" : String(Math.max(0, 1 - (t - 0.78) / 0.22));
 
-    if (t < 1) {
-      requestAnimationFrame(frame);
-    } else {
-      onDone();
-    }
+    if (t < 1) requestAnimationFrame(frame);
+    else onDone();
   }
   requestAnimationFrame(frame);
 }
@@ -474,10 +525,10 @@ function onWin() {
     return;
   }
   const cleared = state.level + 1;
-  el.winTitle.textContent = "Level Complete!";
-  el.winStats.textContent = `You escaped level ${cleared}.`;
+  el.winTitle.textContent = "Seviye Tamamlandı!";
+  el.winStats.textContent = `${cleared}. seviyeden kaçtın.`;
   el.winDailyInfo.classList.add("hidden");
-  el.btnNext.textContent = "Continue";
+  el.btnNext.textContent = "Devam";
   if (state.level < LEVELS.length - 1) {
     state.level += 1;
     saveProgress();

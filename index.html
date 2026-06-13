@@ -15,7 +15,7 @@
         <div class="logo">
           <span class="logo-tri" aria-hidden="true"></span><span class="logo-text">rrows</span>
         </div>
-        <p class="splash-level">Level <span id="splash-level-num">1</span></p>
+        <p class="splash-level">Seviye <span id="splash-level-num">1</span></p>
 
         <div class="daily-card">
           <div class="daily-card-head">
@@ -26,7 +26,7 @@
           <button id="btn-daily" class="play-btn secondary">Günlük Göreve Başla</button>
         </div>
       </div>
-      <button id="btn-play" class="play-btn">Play</button>
+      <button id="btn-play" class="play-btn">Oyna</button>
     </section>
 
     <!-- Game -->
@@ -38,7 +38,7 @@
             <button id="btn-restart" class="circle-btn" title="Restart">&#8635;</button>
           </div>
           <span class="header-level" id="header-level">
-            <span id="level-title">Level <span id="game-level-num">1</span></span>
+            <span id="level-title">Seviye <span id="game-level-num">1</span></span>
             <span id="daily-title" class="hidden">Günlük Görev</span>
           </span>
           <div class="header-right">
@@ -59,22 +59,23 @@
     <div id="win-overlay" class="overlay hidden">
       <div class="overlay-card">
         <div class="overlay-tri" aria-hidden="true"></div>
-        <h2 id="win-title">Level Complete!</h2>
+        <h2 id="win-title">Seviye Tamamlandı!</h2>
         <p id="win-stats"></p>
         <div id="win-daily-info" class="win-daily-info hidden">
           <p class="win-daily-score" id="win-daily-score"></p>
           <p class="win-daily-next" id="win-daily-next"></p>
         </div>
-        <button id="btn-next" class="play-btn">Continue</button>
+        <button id="btn-next" class="play-btn">Devam</button>
       </div>
     </div>
 
     <!-- Out of hearts overlay -->
     <div id="lose-overlay" class="overlay hidden">
       <div class="overlay-card">
-        <h2>Out of Hearts</h2>
-        <p>Take a breath and try again.</p>
-        <button id="btn-retry" class="play-btn">Retry</button>
+        <div class="overlay-tri" aria-hidden="true"></div>
+        <h2>Canların Bitti</h2>
+        <p>Bir nefes al ve tekrar dene.</p>
+        <button id="btn-retry" class="play-btn">Tekrar Dene</button>
       </div>
     </div>
 
