@@ -1,195 +1,236 @@
+const SVG_NS = "http://www.w3.org/2000/svg";
 const DIRS = {
   up: { dr: -1, dc: 0 },
   down: { dr: 1, dc: 0 },
   left: { dr: 0, dc: -1 },
   right: { dr: 0, dc: 1 },
 };
-
-const STORAGE_KEY = "arrows-puzzle-progress";
+const MAX_HEARTS = 5;
+const STORAGE_KEY = "arrows-escape-progress";
 
 const state = {
-  levelIndex: 0,
-  arrows: [],
-  history: [],
-  moveCount: 0,
+  level: 0,
+  arrows: [], // { cells:[[r,c]...], dir, removed }
+  hearts: MAX_HEARTS,
+  geom: null, // layout info for the current board
 };
 
-const menuScreen = document.getElementById("menu-screen");
-const gameScreen = document.getElementById("game-screen");
-const levelGrid = document.getElementById("level-grid");
-const board = document.getElementById("board");
-const levelNumberEl = document.getElementById("level-number");
-const moveCountEl = document.getElementById("move-count");
-const winOverlay = document.getElementById("win-overlay");
-const winStats = document.getElementById("win-stats");
+const el = {
+  splash: document.getElementById("splash-screen"),
+  game: document.getElementById("game-screen"),
+  splashNum: document.getElementById("splash-level-num"),
+  gameNum: document.getElementById("game-level-num"),
+  hearts: document.getElementById("hearts"),
+  board: document.getElementById("board"),
+  winOverlay: document.getElementById("win-overlay"),
+  winStats: document.getElementById("win-stats"),
+  loseOverlay: document.getElementById("lose-overlay"),
+};
 
-document.getElementById("btn-menu").addEventListener("click", showMenu);
-document.getElementById("btn-restart").addEventListener("click", resetLevel);
-document.getElementById("btn-undo").addEventListener("click", undoMove);
-document.getElementById("btn-hint").addEventListener("click", showHint);
-document.getElementById("btn-replay").addEventListener("click", () => {
-  winOverlay.classList.add("hidden");
-  resetLevel();
-});
+document.getElementById("btn-play").addEventListener("click", () => playLevel(state.level));
+document.getElementById("btn-back").addEventListener("click", showSplash);
+document.getElementById("btn-restart").addEventListener("click", () => playLevel(state.level));
 document.getElementById("btn-next").addEventListener("click", () => {
-  winOverlay.classList.add("hidden");
-  const next = state.levelIndex + 1;
-  if (next < LEVELS.length) {
-    startLevel(next);
-  } else {
-    showMenu();
-  }
+  el.winOverlay.classList.add("hidden");
+  state.level = Math.min(state.level + 1, LEVELS.length - 1);
+  showSplash();
+});
+document.getElementById("btn-retry").addEventListener("click", () => {
+  el.loseOverlay.classList.add("hidden");
+  playLevel(state.level);
 });
 
-function getProgress() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-  } catch (e) {
-    return {};
-  }
+function loadProgress() {
+  const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+  if (!isNaN(saved) && saved >= 0 && saved < LEVELS.length) state.level = saved;
 }
 
-function markCompleted(levelIndex) {
-  const progress = getProgress();
-  progress[levelIndex] = true;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+function saveProgress() {
+  localStorage.setItem(STORAGE_KEY, String(state.level));
 }
 
-function showMenu() {
-  renderMenu();
-  gameScreen.classList.add("hidden");
-  menuScreen.classList.remove("hidden");
+function showSplash() {
+  el.splashNum.textContent = String(state.level + 1);
+  el.game.classList.add("hidden");
+  el.winOverlay.classList.add("hidden");
+  el.loseOverlay.classList.add("hidden");
+  el.splash.classList.remove("hidden");
 }
 
-function renderMenu() {
-  const progress = getProgress();
-  levelGrid.innerHTML = "";
-  LEVELS.forEach((_, i) => {
-    const btn = document.createElement("button");
-    btn.className = "level-btn";
-    btn.textContent = String(i + 1);
-    if (progress[i]) btn.classList.add("completed");
-    btn.addEventListener("click", () => startLevel(i));
-    levelGrid.appendChild(btn);
-  });
-}
+function playLevel(index) {
+  state.level = index;
+  saveProgress();
+  const level = LEVELS[index];
+  state.arrows = level.arrows.map((a) => ({
+    cells: a.cells.map((c) => [...c]),
+    dir: a.dir,
+    removed: false,
+  }));
+  state.hearts = MAX_HEARTS;
 
-function startLevel(index) {
-  state.levelIndex = index;
-  levelNumberEl.textContent = String(index + 1);
-  menuScreen.classList.add("hidden");
-  gameScreen.classList.remove("hidden");
-  resetLevel();
-}
+  el.gameNum.textContent = String(index + 1);
+  el.splash.classList.add("hidden");
+  el.winOverlay.classList.add("hidden");
+  el.loseOverlay.classList.add("hidden");
+  el.game.classList.remove("hidden");
 
-function resetLevel() {
-  const level = LEVELS[state.levelIndex];
-  state.arrows = level.arrows.map((a) => ({ ...a }));
-  state.history = [];
-  state.moveCount = 0;
-  moveCountEl.textContent = "0";
-  winOverlay.classList.add("hidden");
+  renderHearts();
+  computeGeometry();
   renderBoard();
 }
 
-function pathToEdge(r, c, dir, rows, cols) {
-  const { dr, dc } = DIRS[dir];
-  const cells = [];
-  let cr = r + dr;
-  let cc = c + dc;
-  while (cr >= 0 && cr < rows && cc >= 0 && cc < cols) {
-    cells.push({ r: cr, c: cc });
-    cr += dr;
-    cc += dc;
+function renderHearts() {
+  el.hearts.innerHTML = "";
+  for (let i = 0; i < MAX_HEARTS; i++) {
+    const h = document.createElement("div");
+    h.className = "heart" + (i < state.hearts ? "" : " empty");
+    el.hearts.appendChild(h);
   }
-  return cells;
 }
 
-function isRemovable(arrow) {
-  const level = LEVELS[state.levelIndex];
-  const path = pathToEdge(arrow.r, arrow.c, arrow.dir, level.rows, level.cols);
-  return !path.some((cell) =>
-    state.arrows.some((other) => other !== arrow && other.r === cell.r && other.c === cell.c)
-  );
+// Figure out the cell size and viewBox from the arrows' bounding box.
+function computeGeometry() {
+  let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+  for (const a of state.arrows) {
+    for (const [r, c] of a.cells) {
+      if (r < minR) minR = r;
+      if (r > maxR) maxR = r;
+      if (c < minC) minC = c;
+      if (c > maxC) maxC = c;
+    }
+  }
+  const cell = 40;
+  const pad = cell;
+  const rows = maxR - minR + 1;
+  const cols = maxC - minC + 1;
+  state.geom = {
+    minR, minC, cell, pad,
+    width: cols * cell + pad * 2,
+    height: rows * cell + pad * 2,
+  };
+}
+
+function cellToXY(r, c) {
+  const g = state.geom;
+  return {
+    x: g.pad + (c - g.minC) * g.cell + g.cell / 2,
+    y: g.pad + (r - g.minR) * g.cell + g.cell / 2,
+  };
 }
 
 function renderBoard() {
-  const level = LEVELS[state.levelIndex];
-  board.style.gridTemplateColumns = `repeat(${level.cols}, 1fr)`;
-  board.style.gridTemplateRows = `repeat(${level.rows}, 1fr)`;
-  board.innerHTML = "";
+  const g = state.geom;
+  el.board.setAttribute("viewBox", `0 0 ${g.width} ${g.height}`);
+  el.board.innerHTML = "";
 
-  const cellMap = {};
-  for (let r = 0; r < level.rows; r++) {
-    for (let c = 0; c < level.cols; c++) {
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      board.appendChild(cell);
-      cellMap[`${r},${c}`] = cell;
-    }
+  for (const arrow of state.arrows) {
+    if (arrow.removed) continue;
+    el.board.appendChild(buildArrowEl(arrow));
   }
-
-  state.arrows.forEach((arrow) => {
-    const wrap = document.createElement("div");
-    wrap.className = "arrow-wrap";
-    const inner = document.createElement("div");
-    inner.className = `arrow dir-${arrow.dir}`;
-    wrap.appendChild(inner);
-    wrap.addEventListener("click", () => handleArrowClick(arrow, wrap));
-    cellMap[`${arrow.r},${arrow.c}`].appendChild(wrap);
-  });
 }
 
-function handleArrowClick(arrow, wrapEl) {
+function buildArrowEl(arrow) {
+  const g = state.geom;
+  const group = document.createElementNS(SVG_NS, "g");
+  group.setAttribute("class", "arrow-group");
+
+  const pts = arrow.cells.map(([r, c]) => cellToXY(r, c));
+  const head = pts[pts.length - 1];
+  const { dr, dc } = DIRS[arrow.dir];
+  const headBack = pts.length > 1 ? pts[pts.length - 2] : { x: head.x - dc * g.cell, y: head.y - dr * g.cell };
+
+  // Stroke stops short of the head tip so the triangle sits cleanly on the end.
+  const tip = { x: head.x + dc * g.cell * 0.42, y: head.y + dr * g.cell * 0.42 };
+  const base = { x: head.x - dc * g.cell * 0.12, y: head.y - dr * g.cell * 0.12 };
+
+  const strokeW = g.cell * 0.2;
+  const linePts = pts.slice(0, -1).concat([base]);
+  if (pts.length === 1) linePts[0] = headBack;
+
+  const poly = document.createElementNS(SVG_NS, "polyline");
+  poly.setAttribute("class", "arrow-stroke");
+  poly.setAttribute("points", linePts.map((p) => `${p.x},${p.y}`).join(" "));
+  poly.setAttribute("stroke-width", String(strokeW));
+  group.appendChild(poly);
+
+  // Arrowhead triangle pointing in the travel direction.
+  const hw = g.cell * 0.3; // half width
+  const perp = { x: -dr, y: dc }; // perpendicular unit-ish (dr/dc are 0/±1)
+  const p1 = `${tip.x},${tip.y}`;
+  const p2 = `${base.x + perp.x * hw},${base.y + perp.y * hw}`;
+  const p3 = `${base.x - perp.x * hw},${base.y - perp.y * hw}`;
+  const tri = document.createElementNS(SVG_NS, "polygon");
+  tri.setAttribute("class", "arrow-head");
+  tri.setAttribute("points", `${p1} ${p2} ${p3}`);
+  group.appendChild(tri);
+
+  group.addEventListener("click", () => handleClick(arrow, group));
+  return group;
+}
+
+// An arrow is removable if no other present arrow occupies a cell on the
+// straight ray extending from its head in its travel direction.
+function isRemovable(arrow) {
+  const head = arrow.cells[arrow.cells.length - 1];
+  const { dr, dc } = DIRS[arrow.dir];
+  for (const other of state.arrows) {
+    if (other === arrow || other.removed) continue;
+    for (const [r, c] of other.cells) {
+      if (dr !== 0) {
+        if (c === head[1] && (dr < 0 ? r < head[0] : r > head[0])) return false;
+      } else {
+        if (r === head[0] && (dc < 0 ? c < head[1] : c > head[1])) return false;
+      }
+    }
+  }
+  return true;
+}
+
+function handleClick(arrow, group) {
+  if (arrow.removed) return;
+
   if (!isRemovable(arrow)) {
-    wrapEl.classList.remove("shake");
-    // restart animation
-    requestAnimationFrame(() => wrapEl.classList.add("shake"));
-    setTimeout(() => wrapEl.classList.remove("shake"), 350);
+    loseHeart();
+    group.classList.add("blocked");
+    setTimeout(() => group.classList.remove("blocked"), 380);
     return;
   }
 
-  state.history.push(state.arrows.map((a) => ({ ...a })));
-
-  wrapEl.classList.add(`exit-${arrow.dir}`);
+  arrow.removed = true;
+  const g = state.geom;
+  const { dr, dc } = DIRS[arrow.dir];
+  const dist = Math.max(g.width, g.height) * 1.2;
+  group.classList.add("leaving");
+  group.style.transform = `translate(${dc * dist}px, ${dr * dist}px)`;
 
   setTimeout(() => {
-    state.arrows = state.arrows.filter((a) => a !== arrow);
-    state.moveCount++;
-    moveCountEl.textContent = String(state.moveCount);
-    renderBoard();
-
-    if (state.arrows.length === 0) {
-      onLevelComplete();
-    }
-  }, 250);
+    group.remove();
+    if (state.arrows.every((a) => a.removed)) onWin();
+  }, 320);
 }
 
-function undoMove() {
-  if (state.history.length === 0) return;
-  state.arrows = state.history.pop();
-  state.moveCount = Math.max(0, state.moveCount - 1);
-  moveCountEl.textContent = String(state.moveCount);
-  renderBoard();
+function loseHeart() {
+  state.hearts = Math.max(0, state.hearts - 1);
+  const heartEls = el.hearts.querySelectorAll(".heart");
+  const idx = state.hearts; // the heart that just emptied
+  if (heartEls[idx]) {
+    heartEls[idx].classList.add("empty", "pop");
+    setTimeout(() => heartEls[idx].classList.remove("pop"), 400);
+  }
+  if (state.hearts === 0) {
+    setTimeout(() => el.loseOverlay.classList.remove("hidden"), 450);
+  }
 }
 
-function showHint() {
-  const target = state.arrows.find((a) => isRemovable(a));
-  if (!target) return;
-  const wraps = board.querySelectorAll(".arrow-wrap");
-  state.arrows.forEach((arrow, i) => {
-    if (arrow === target) {
-      wraps[i].classList.add("hint");
-      setTimeout(() => wraps[i].classList.remove("hint"), 1500);
-    }
-  });
+function onWin() {
+  const cleared = state.level + 1;
+  el.winStats.textContent = `You escaped level ${cleared}.`;
+  if (state.level < LEVELS.length - 1) {
+    state.level += 1;
+    saveProgress();
+  }
+  el.winOverlay.classList.remove("hidden");
 }
 
-function onLevelComplete() {
-  markCompleted(state.levelIndex);
-  renderMenu();
-  winStats.textContent = `Solved in ${state.moveCount} moves.`;
-  winOverlay.classList.remove("hidden");
-}
-
-renderMenu();
+loadProgress();
+showSplash();

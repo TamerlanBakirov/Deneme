@@ -2,50 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Arrows – Puzzle Escape</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <div class="app">
 
-    <!-- Level select screen -->
-    <section id="menu-screen" class="screen">
-      <h1 class="title">Arrows <span>Puzzle Escape</span></h1>
-      <p class="subtitle">Extract every arrow without a collision.</p>
-      <div id="level-grid" class="level-grid"></div>
+    <!-- Per-level splash -->
+    <section id="splash-screen" class="screen">
+      <div class="splash-center">
+        <div class="logo">
+          <span class="logo-tri" aria-hidden="true"></span><span class="logo-text">rrows</span>
+        </div>
+        <p class="splash-level">Level <span id="splash-level-num">1</span></p>
+      </div>
+      <button id="btn-play" class="play-btn">Play</button>
     </section>
 
-    <!-- Game screen -->
+    <!-- Game -->
     <section id="game-screen" class="screen hidden">
       <header class="game-header">
-        <button id="btn-menu" class="icon-btn" title="Back to levels">&#8592;</button>
-        <div class="level-info">
-          <span class="level-label">Level <span id="level-number">1</span></span>
-          <span class="move-label">Moves: <span id="move-count">0</span></span>
+        <div class="header-top">
+          <div class="header-left">
+            <button id="btn-back" class="circle-btn" title="Back">&#9664;</button>
+            <button id="btn-restart" class="circle-btn" title="Restart">&#8635;</button>
+          </div>
+          <span class="header-level">Level <span id="game-level-num">1</span></span>
+          <div class="header-right"></div>
         </div>
-        <button id="btn-restart" class="icon-btn" title="Restart level">&#8635;</button>
+        <div id="hearts" class="hearts"></div>
       </header>
 
       <div class="board-wrap">
-        <div id="board" class="board"></div>
+        <svg id="board" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
 
-      <footer class="game-footer">
-        <button id="btn-undo" class="action-btn">Undo</button>
-        <button id="btn-hint" class="action-btn">Hint</button>
-      </footer>
+      <footer class="game-footer"></footer>
     </section>
 
     <!-- Win overlay -->
     <div id="win-overlay" class="overlay hidden">
       <div class="overlay-card">
+        <div class="overlay-tri" aria-hidden="true"></div>
         <h2>Level Complete!</h2>
         <p id="win-stats"></p>
-        <div class="overlay-actions">
-          <button id="btn-replay" class="action-btn">Replay</button>
-          <button id="btn-next" class="action-btn primary">Next Level</button>
-        </div>
+        <button id="btn-next" class="play-btn">Continue</button>
+      </div>
+    </div>
+
+    <!-- Out of hearts overlay -->
+    <div id="lose-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <h2>Out of Hearts</h2>
+        <p>Take a breath and try again.</p>
+        <button id="btn-retry" class="play-btn">Retry</button>
       </div>
     </div>
 
