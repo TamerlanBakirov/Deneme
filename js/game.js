@@ -341,31 +341,93 @@ function isRemovable(arrow) {
   return true;
 }
 
-// Slither the arrow off the board: it eases forward along its travel
-// direction while wiggling side to side like a snake, fading out near the edge.
+// Send the arrow off the board like a train pulling out: the head leads off
+// in its travel direction, and each body segment follows the exact same path
+// (through any bends) that the segment ahead of it took, then exits the same
+// clear lane — so it never crosses another arrow's cells.
 function animateLeave(arrow, group, onDone) {
   const g = state.geom;
   const { dr, dc } = DIRS[arrow.dir];
-  const dist = Math.max(g.width, g.height) * 1.2;
-  const perpX = -dr;
-  const perpY = dc;
-  const amplitude = g.cell * 0.22;
-  const cycles = Math.min(3, Math.max(1, Math.ceil(arrow.cells.length / 1.5)));
-  const steps = 14;
+  const dirUnit = { x: dc, y: dr };
+  const exitDist = Math.max(g.width, g.height) * 1.2;
 
-  const keyframes = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const forward = dist * (t * t);
-    const wiggle = Math.sin(t * Math.PI * cycles) * amplitude * (1 - t);
-    const x = dc * forward + perpX * wiggle;
-    const y = dr * forward + perpY * wiggle;
-    const opacity = t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
-    keyframes.push({ transform: `translate(${x}px, ${y}px)`, opacity });
+  const pts = arrow.cells.map(([r, c]) => cellToXY(r, c));
+  const n = pts.length;
+  const head = pts[n - 1];
+  const exitPoint = { x: head.x + dirUnit.x * exitDist, y: head.y + dirUnit.y * exitDist };
+  const waypoints = pts.concat([exitPoint]);
+
+  const lens = [];
+  for (let i = 0; i < n; i++) {
+    const a = waypoints[i], b = waypoints[i + 1];
+    lens.push(Math.hypot(b.x - a.x, b.y - a.y));
+  }
+  const cum = [0];
+  for (let i = 0; i < n; i++) cum.push(cum[i] + lens[i]);
+  const total = cum[n];
+
+  function pathPointAt(arcLen) {
+    if (arcLen <= 0) return waypoints[0];
+    if (arcLen >= total) {
+      const over = arcLen - total;
+      return { x: exitPoint.x + dirUnit.x * over, y: exitPoint.y + dirUnit.y * over };
+    }
+    for (let i = 0; i < n; i++) {
+      if (arcLen <= cum[i + 1]) {
+        const t = (arcLen - cum[i]) / lens[i];
+        const a = waypoints[i], b = waypoints[i + 1];
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+      }
+    }
+    return exitPoint;
   }
 
-  const anim = group.animate(keyframes, { duration: 520, easing: "linear", fill: "forwards" });
-  anim.onfinish = onDone;
+  const poly = group.querySelector(".arrow-stroke");
+  const tri = group.querySelector(".arrow-head");
+
+  const tipOrig = { x: head.x + dc * g.cell * 0.42, y: head.y + dr * g.cell * 0.42 };
+  const baseOrig = { x: head.x - dc * g.cell * 0.12, y: head.y - dr * g.cell * 0.12 };
+  const hw = g.cell * 0.3;
+  const perp = { x: -dr, y: dc };
+  const triP2 = { x: baseOrig.x + perp.x * hw, y: baseOrig.y + perp.y * hw };
+  const triP3 = { x: baseOrig.x - perp.x * hw, y: baseOrig.y - perp.y * hw };
+  const headBack = n === 1 ? { x: head.x - dc * g.cell, y: head.y - dr * g.cell } : null;
+
+  const duration = Math.min(900, 380 + (n - 1) * 90);
+  const start = performance.now();
+
+  function frame(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const ease = t * t; // accelerate like a departing train
+    const d = total * ease;
+
+    const newBase = { x: baseOrig.x + dirUnit.x * d, y: baseOrig.y + dirUnit.y * d };
+    let linePts;
+    if (n === 1) {
+      linePts = [
+        { x: headBack.x + dirUnit.x * d, y: headBack.y + dirUnit.y * d },
+        newBase,
+      ];
+    } else {
+      const newPts = pts.slice(0, -1).map((_, i) => pathPointAt(cum[i] + d));
+      linePts = newPts.concat([newBase]);
+    }
+    poly.setAttribute("points", linePts.map((p) => `${p.x},${p.y}`).join(" "));
+
+    const tip = { x: tipOrig.x + dirUnit.x * d, y: tipOrig.y + dirUnit.y * d };
+    const p2 = { x: triP2.x + dirUnit.x * d, y: triP2.y + dirUnit.y * d };
+    const p3 = { x: triP3.x + dirUnit.x * d, y: triP3.y + dirUnit.y * d };
+    tri.setAttribute("points", `${tip.x},${tip.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`);
+
+    group.style.opacity = t < 0.7 ? "1" : String(Math.max(0, 1 - (t - 0.7) / 0.3));
+
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      onDone();
+    }
+  }
+  requestAnimationFrame(frame);
 }
 
 function handleClick(arrow, group) {
