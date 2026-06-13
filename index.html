@@ -16,6 +16,15 @@
           <span class="logo-tri" aria-hidden="true"></span><span class="logo-text">rrows</span>
         </div>
         <p class="splash-level">Level <span id="splash-level-num">1</span></p>
+
+        <div class="daily-card">
+          <div class="daily-card-head">
+            <span class="daily-badge">Günlük Görev</span>
+            <span class="daily-timer" id="daily-timer">--:--:--</span>
+          </div>
+          <p class="daily-status" id="daily-status">Bugünün özel görevini çöz ve hızını ölç!</p>
+          <button id="btn-daily" class="play-btn secondary">Günlük Göreve Başla</button>
+        </div>
       </div>
       <button id="btn-play" class="play-btn">Play</button>
     </section>
@@ -28,8 +37,13 @@
             <button id="btn-back" class="circle-btn" title="Back">&#9664;</button>
             <button id="btn-restart" class="circle-btn" title="Restart">&#8635;</button>
           </div>
-          <span class="header-level">Level <span id="game-level-num">1</span></span>
-          <div class="header-right"></div>
+          <span class="header-level" id="header-level">
+            <span id="level-title">Level <span id="game-level-num">1</span></span>
+            <span id="daily-title" class="hidden">Günlük Görev</span>
+          </span>
+          <div class="header-right">
+            <span id="daily-clock" class="daily-clock hidden">0:00.0</span>
+          </div>
         </div>
         <div id="hearts" class="hearts"></div>
       </header>
@@ -45,8 +59,12 @@
     <div id="win-overlay" class="overlay hidden">
       <div class="overlay-card">
         <div class="overlay-tri" aria-hidden="true"></div>
-        <h2>Level Complete!</h2>
+        <h2 id="win-title">Level Complete!</h2>
         <p id="win-stats"></p>
+        <div id="win-daily-info" class="win-daily-info hidden">
+          <p class="win-daily-score" id="win-daily-score"></p>
+          <p class="win-daily-next" id="win-daily-next"></p>
+        </div>
         <button id="btn-next" class="play-btn">Continue</button>
       </div>
     </div>
@@ -63,6 +81,7 @@
   </div>
 
   <script src="js/levels.js"></script>
+  <script src="js/generator.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
