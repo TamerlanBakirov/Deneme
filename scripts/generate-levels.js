@@ -1,4 +1,4 @@
-// Level generator CLI for the "Arrows" puzzle clone.
+// Level generator CLI for the "Knot Escape" puzzle game.
 //
 // The actual placement/validation algorithm lives in js/generator.js so the
 // same code can produce the daily challenge in the browser. See that file

@@ -6,8 +6,8 @@ const DIRS = {
   right: { dr: 0, dc: 1 },
 };
 const MAX_HEARTS = 5;
-const STORAGE_KEY = "arrows-escape-progress";
-const DAILY_KEY = "arrows-escape-daily";
+const STORAGE_KEY = "knot-escape-progress";
+const DAILY_KEY = "knot-escape-daily";
 const DAILY_CONFIG = { rows: 8, cols: 8, fillTarget: 0.68, maxLen: 5 };
 
 const state = {
@@ -93,7 +93,7 @@ function hashSeed(str) {
 }
 
 function getDailyLevel() {
-  const seed = hashSeed(`arrows-daily-${dateKey()}`);
+  const seed = hashSeed(`knot-daily-${dateKey()}`);
   const { rows, cols, fillTarget, maxLen } = DAILY_CONFIG;
   return LevelGenerator.generateLevel(rows, cols, fillTarget, maxLen, seed);
 }
@@ -351,6 +351,15 @@ function buildArrowEl(arrow) {
   poly.setAttribute("stroke-width", String(strokeW));
   group.appendChild(poly);
 
+  // Small knot tied at the tail end of the cord.
+  const tail = pts.length > 1 ? pts[0] : headBack;
+  const knot = document.createElementNS(SVG_NS, "circle");
+  knot.setAttribute("class", "arrow-knot");
+  knot.setAttribute("cx", String(tail.x));
+  knot.setAttribute("cy", String(tail.y));
+  knot.setAttribute("r", String(g.cell * 0.16));
+  group.appendChild(knot);
+
   // Arrowhead triangle pointing in the travel direction.
   const hw = g.cell * 0.3; // half width
   const perp = { x: -dr, y: dc }; // perpendicular unit-ish (dr/dc are 0/±1)
@@ -444,7 +453,12 @@ function animateLeave(arrow, group, onDone) {
 
   const poly = group.querySelector(".arrow-stroke");
   const tri = group.querySelector(".arrow-head");
+  const knot = group.querySelector(".arrow-knot");
   const hw = cell * 0.3;
+
+  // The tail knot sits at the rope's starting point; for a single-cell arrow
+  // that's one cell behind the head, off the front of the shared path.
+  const tailArc = n > 1 ? 0 : -cell;
 
   const headArc = cum[n - 1];
   // Polyline runs from the tail up to the arrowhead base.
@@ -472,6 +486,10 @@ function animateLeave(arrow, group, onDone) {
     const p3 = { x: c.x - perp.x * hw, y: c.y - perp.y * hw };
     tri.setAttribute("points",
       `${tp.x.toFixed(2)},${tp.y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)} ${p3.x.toFixed(2)},${p3.y.toFixed(2)}`);
+
+    const tailPt = at(tailArc + d);
+    knot.setAttribute("cx", tailPt.x.toFixed(2));
+    knot.setAttribute("cy", tailPt.y.toFixed(2));
 
     group.style.opacity = t < 0.78 ? "1" : String(Math.max(0, 1 - (t - 0.78) / 0.22));
 
