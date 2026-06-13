@@ -56,7 +56,8 @@
     return true;
   }
 
-  function generateLevel(rows, cols, fillTarget, maxLen, seed) {
+  function generateLevel(rows, cols, fillTarget, maxLen, seed, minLen) {
+    minLen = Math.max(1, Math.min(minLen || 1, maxLen));
     const rand = makeRng(seed);
     const occupied = new Map(); // "r,c" -> arrow index
     const arrows = [];
@@ -84,7 +85,7 @@
       // never land on the forward ray.
       const used = new Set([`${hr},${hc}`]);
       const body = [head]; // tail .. head order is built by unshifting
-      const desiredLen = 1 + Math.floor(rand() * maxLen);
+      const desiredLen = minLen + Math.floor(rand() * (maxLen - minLen + 1));
 
       let cur = head;
       let firstStep = true;

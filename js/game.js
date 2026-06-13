@@ -337,11 +337,13 @@ function buildArrowEl(arrow) {
   const { dr, dc } = DIRS[arrow.dir];
   const headBack = pts.length > 1 ? pts[pts.length - 2] : { x: head.x - dc * g.cell, y: head.y - dr * g.cell };
 
-  // Stroke stops short of the head tip so the triangle sits cleanly on the end.
-  const tip = { x: head.x + dc * g.cell * 0.42, y: head.y + dr * g.cell * 0.42 };
-  const base = { x: head.x - dc * g.cell * 0.12, y: head.y - dr * g.cell * 0.12 };
+  // Stroke stops short of the head tip so the triangle sits cleanly on the end,
+  // and everything is sized a bit smaller than the cell so neighbouring cords
+  // never visually touch or overlap.
+  const tip = { x: head.x + dc * g.cell * 0.36, y: head.y + dr * g.cell * 0.36 };
+  const base = { x: head.x - dc * g.cell * 0.16, y: head.y - dr * g.cell * 0.16 };
 
-  const strokeW = g.cell * 0.2;
+  const strokeW = g.cell * 0.16;
   const linePts = pts.slice(0, -1).concat([base]);
   if (pts.length === 1) linePts[0] = headBack;
 
@@ -357,11 +359,11 @@ function buildArrowEl(arrow) {
   knot.setAttribute("class", "arrow-knot");
   knot.setAttribute("cx", String(tail.x));
   knot.setAttribute("cy", String(tail.y));
-  knot.setAttribute("r", String(g.cell * 0.16));
+  knot.setAttribute("r", String(g.cell * 0.13));
   group.appendChild(knot);
 
   // Arrowhead triangle pointing in the travel direction.
-  const hw = g.cell * 0.3; // half width
+  const hw = g.cell * 0.24; // half width
   const perp = { x: -dr, y: dc }; // perpendicular unit-ish (dr/dc are 0/±1)
   const p1 = `${tip.x},${tip.y}`;
   const p2 = `${base.x + perp.x * hw},${base.y + perp.y * hw}`;
@@ -454,7 +456,7 @@ function animateLeave(arrow, group, onDone) {
   const poly = group.querySelector(".arrow-stroke");
   const tri = group.querySelector(".arrow-head");
   const knot = group.querySelector(".arrow-knot");
-  const hw = cell * 0.3;
+  const hw = cell * 0.24;
 
   // The tail knot sits at the rope's starting point; for a single-cell arrow
   // that's one cell behind the head, off the front of the shared path.
@@ -464,9 +466,9 @@ function animateLeave(arrow, group, onDone) {
   // Polyline runs from the tail up to the arrowhead base.
   const bodyArcs = [];
   for (let i = 0; i < n - 1; i++) bodyArcs.push(cum[i]);
-  bodyArcs.push(headArc - cell * 0.12);
-  const baseArc = headArc - cell * 0.12;
-  const tipArc = headArc + cell * 0.42;
+  bodyArcs.push(headArc - cell * 0.16);
+  const baseArc = headArc - cell * 0.16;
+  const tipArc = headArc + cell * 0.36;
 
   const duration = Math.min(640, 360 + (n - 1) * 45);
   const start = performance.now();
