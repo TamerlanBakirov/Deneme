@@ -573,6 +573,18 @@ body {
   transform: translateX(18px);
 }
 
+.lang-select {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-deep);
+  background: var(--bg);
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  padding: 8px 12px;
+  max-width: 150px;
+}
+
 /* ---------- Buttons ---------- */
 .play-btn {
   width: 100%;

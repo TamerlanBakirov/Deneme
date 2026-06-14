@@ -46,9 +46,9 @@ const el = {
   collection: document.getElementById("collection-screen"),
   settings: document.getElementById("settings-screen"),
   game: document.getElementById("game-screen"),
-  splashNum: document.getElementById("splash-level-num"),
-  gameNum: document.getElementById("game-level-num"),
+  splashLevel: document.getElementById("splash-level"),
   levelTitle: document.getElementById("level-title"),
+  langSelect: document.getElementById("lang-select"),
   dailyTitle: document.getElementById("daily-title"),
   dailyClock: document.getElementById("daily-clock"),
   hearts: document.getElementById("hearts"),
@@ -153,14 +153,14 @@ el.toggleColors.addEventListener("click", () => {
 });
 
 el.btnResetProgress.addEventListener("click", () => {
-  if (!confirm("Tüm seviye ilerlemen sıfırlanacak. Emin misin?")) return;
+  if (!confirm(t("reset_confirm"))) return;
   state.level = 0;
   state.stars.fill(0);
   state.records.fill(null);
   saveProgress();
   saveStars();
   saveRecords();
-  el.splashNum.textContent = "1";
+  el.splashLevel.textContent = t("level_label", { n: 1 });
   renderCollection();
   renderAchievements();
 });
@@ -242,44 +242,44 @@ function starsForHearts(hearts) {
 const ACHIEVEMENTS = [
   {
     id: "first-knot",
-    title: "İlk Düğüm",
-    desc: "İlk seviyeyi tamamla",
+    titleKey: "ach_first_knot_title",
+    descKey: "ach_first_knot_desc",
     check: (s) => s.level >= 1 || s.stars[0] > 0,
   },
   {
     id: "level-10",
-    title: "On Seviye",
-    desc: "11. seviyeye ulaş",
+    titleKey: "ach_level10_title",
+    descKey: "ach_level10_desc",
     check: (s) => s.level >= 10,
   },
   {
     id: "level-25",
-    title: "Çeyrek Yol",
-    desc: "26. seviyeye ulaş",
+    titleKey: "ach_level25_title",
+    descKey: "ach_level25_desc",
     check: (s) => s.level >= 25,
   },
   {
     id: "all-levels",
-    title: "Knot Ustası",
-    desc: "Tüm seviyeleri tamamla",
+    titleKey: "ach_all_levels_title",
+    descKey: "ach_all_levels_desc",
     check: (s) => s.stars[LEVELS.length - 1] > 0,
   },
   {
     id: "perfect",
-    title: "Mükemmel Çözüm",
-    desc: "Bir seviyeyi cansız kayıp yapmadan bitir",
+    titleKey: "ach_perfect_title",
+    descKey: "ach_perfect_desc",
     check: (s) => s.stars.some((v) => v === 3),
   },
   {
     id: "star-collector",
-    title: "Yıldız Koleksiyoncusu",
-    desc: "10 seviyede 3 yıldız kazan",
+    titleKey: "ach_star_collector_title",
+    descKey: "ach_star_collector_desc",
     check: (s) => s.stars.filter((v) => v === 3).length >= 10,
   },
   {
     id: "daily-explorer",
-    title: "Günlük Kaşif",
-    desc: "Bir günlük görevi tamamla",
+    titleKey: "ach_daily_explorer_title",
+    descKey: "ach_daily_explorer_desc",
     check: () => !!loadDailyRecord(),
   },
 ];
@@ -292,8 +292,8 @@ function renderAchievements() {
     card.className = "achv-card" + (unlocked ? " unlocked" : " locked");
     card.innerHTML = `
       <span class="achv-icon">${unlocked ? "🏆" : "🔒"}</span>
-      <span class="achv-title">${a.title}</span>
-      <span class="achv-desc">${a.desc}</span>
+      <span class="achv-title">${t(a.titleKey)}</span>
+      <span class="achv-desc">${t(a.descKey)}</span>
     `;
     el.achvGrid.appendChild(card);
   }
@@ -547,16 +547,19 @@ function formatClock(ms) {
 function updateDailyCard() {
   const record = loadDailyRecord();
   if (record && record.completed) {
-    el.btnDaily.textContent = "Tekrar Oyna";
-    el.dailyStatus.textContent = `Bugünkü en iyi skorun: ${record.score} puan • ${formatClock(record.timeMs)}`;
+    el.btnDaily.textContent = t("daily_play_again");
+    el.dailyStatus.textContent = t("daily_best_status", {
+      score: record.score,
+      time: formatClock(record.timeMs),
+    });
   } else {
-    el.btnDaily.textContent = "Günlük Göreve Başla";
-    el.dailyStatus.textContent = "Bugünün özel görevini çöz ve hızını ölç!";
+    el.btnDaily.textContent = t("daily_start");
+    el.dailyStatus.textContent = t("daily_status_default");
   }
 
   if (state.dailyCountdownInterval) clearInterval(state.dailyCountdownInterval);
   const tick = () => {
-    el.dailyTimer.textContent = "Yeni görev: " + formatHMS(msUntilNextMidnight());
+    el.dailyTimer.textContent = t("new_challenge_in", { time: formatHMS(msUntilNextMidnight()) });
   };
   tick();
   state.dailyCountdownInterval = setInterval(tick, 1000);
@@ -576,15 +579,15 @@ async function refreshLeaderboard() {
     return;
   }
   el.leaderboardCard.classList.remove("hidden");
-  el.lbPlayerName.textContent = Leaderboard.getPlayerName() || "Adını seç";
+  el.lbPlayerName.textContent = Leaderboard.getPlayerName() || t("choose_name");
 
   const entries = await Leaderboard.fetchDailyLeaderboard(dateKey(), 10);
   el.leaderboardList.innerHTML = "";
 
   if (!entries || entries.length === 0) {
     el.leaderboardEmpty.textContent = !entries
-      ? "Sıralama yüklenemedi. Bağlantını kontrol et."
-      : "Henüz sıralama yok. İlk skoru sen koy!";
+      ? t("leaderboard_load_error")
+      : t("leaderboard_empty");
     el.leaderboardEmpty.classList.remove("hidden");
     return;
   }
@@ -595,7 +598,7 @@ async function refreshLeaderboard() {
     const li = document.createElement("li");
     li.className = "leaderboard-item" + (entry.id === myId ? " mine" : "");
     li.innerHTML = `<span class="lb-rank">${i + 1}</span><span class="lb-name">${escapeHtml(
-      entry.name || "Oyuncu"
+      entry.name || t("player_default")
     )}</span><span class="lb-score">${entry.score}</span>`;
     el.leaderboardList.appendChild(li);
   });
@@ -670,7 +673,7 @@ function showTab(tab) {
 
   el.navBtns.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
 
-  el.splashNum.textContent = String(state.level + 1);
+  el.splashLevel.textContent = t("level_label", { n: state.level + 1 });
   updateDailyCard();
   if (tab === "collection") {
     renderCollection();
@@ -740,7 +743,7 @@ function playLevel(index) {
   el.dailyTitle.classList.add("hidden");
   el.levelTitle.classList.remove("hidden");
   el.dailyClock.classList.add("hidden");
-  el.gameNum.textContent = String(index + 1);
+  el.levelTitle.textContent = t("level_label", { n: index + 1 });
 
   state.returnTab = state.tab;
   hideTabScreens();
@@ -1317,14 +1320,14 @@ function onWin() {
   };
   saveRecords();
 
-  el.winTitle.textContent = "Seviye Tamamlandı!";
-  el.winStats.textContent = `${cleared}. seviyeden kaçtın.`;
+  el.winTitle.textContent = t("level_complete");
+  el.winStats.textContent = t("escaped_level", { n: cleared });
   el.winRecordTime.textContent = "⏱ " + formatClock(timeMs);
   el.winRecordTime.classList.toggle("best", newTimeBest && !!prev);
-  el.winRecordMoves.textContent = "👆 " + moves + " hamle";
+  el.winRecordMoves.textContent = "👆 " + t("moves_suffix", { n: moves });
   el.winRecords.classList.remove("hidden");
   el.winDailyInfo.classList.add("hidden");
-  el.btnNext.textContent = "Devam";
+  el.btnNext.textContent = t("continue");
   showWinStars(earned);
   if (state.level < LEVELS.length - 1) {
     state.level += 1;
@@ -1370,14 +1373,14 @@ function onDailyWin() {
 
   el.winStars.classList.add("hidden");
   el.winRecords.classList.add("hidden");
-  el.winTitle.textContent = "Günlük Görev Tamamlandı!";
-  el.winStats.textContent = `Süre: ${formatClock(timeMs)} • Kalan can: ${heartsLeft}`;
+  el.winTitle.textContent = t("daily_complete");
+  el.winStats.textContent = t("daily_stats", { time: formatClock(timeMs), hearts: heartsLeft });
   el.winDailyScore.textContent = isBest
-    ? `Skor: ${score} (yeni en iyi!)`
-    : `Skor: ${score} (en iyin: ${prev.score})`;
-  el.winDailyNext.textContent = `Yeni görev ${formatHMS(msUntilNextMidnight())} sonra`;
+    ? t("score_new_best", { score })
+    : t("score_prev_best", { score, prev: prev.score });
+  el.winDailyNext.textContent = t("new_challenge_in_suffix", { time: formatHMS(msUntilNextMidnight()) });
   el.winDailyInfo.classList.remove("hidden");
-  el.btnNext.textContent = "Tamam";
+  el.btnNext.textContent = t("ok");
   playWinChime();
   launchConfetti();
   el.winOverlay.classList.remove("hidden");
@@ -1386,26 +1389,10 @@ function onDailyWin() {
 // ---------- Tutorial ----------
 
 const TUTORIAL_STEPS = [
-  {
-    emoji: "🪢",
-    title: "Knot Escape",
-    text: "Tahta birbirine dolanmış iplerle dolu. Hepsini çözüp tahtayı tamamen boşaltmalısın.",
-  },
-  {
-    emoji: "👆",
-    title: "İpe Dokun",
-    text: "Bir ipin oku, önündeki yol boşsa o yöne doğru kayıp gider. İpin herhangi bir yerine dokunabilirsin.",
-  },
-  {
-    emoji: "🚫",
-    title: "Sıraya Dikkat",
-    text: "Önü başka iplerle kapalı bir ipe dokunursan bir can kaybedersin. Doğru çözüm sırasını bulmaya çalış!",
-  },
-  {
-    emoji: "💡",
-    title: "Yardımcıların Var",
-    text: "Sıkışırsan İpucu güvenli bir hamleyi parlatır, Geri Al ise son hamleni geri alır.",
-  },
+  { emoji: "🪢", titleKey: "tut1_title", textKey: "tut1_text" },
+  { emoji: "👆", titleKey: "tut2_title", textKey: "tut2_text" },
+  { emoji: "🚫", titleKey: "tut3_title", textKey: "tut3_text" },
+  { emoji: "💡", titleKey: "tut4_title", textKey: "tut4_text" },
 ];
 
 let tutorialStep = 0;
@@ -1413,8 +1400,8 @@ let tutorialStep = 0;
 function renderTutorialStep() {
   const s = TUTORIAL_STEPS[tutorialStep];
   el.tutorialEmoji.textContent = s.emoji;
-  el.tutorialTitle.textContent = s.title;
-  el.tutorialText.textContent = s.text;
+  el.tutorialTitle.textContent = t(s.titleKey);
+  el.tutorialText.textContent = t(s.textKey);
   el.tutorialDots.innerHTML = "";
   TUTORIAL_STEPS.forEach((_, i) => {
     const dot = document.createElement("span");
@@ -1422,7 +1409,7 @@ function renderTutorialStep() {
     el.tutorialDots.appendChild(dot);
   });
   el.btnTutorialNext.textContent =
-    tutorialStep === TUTORIAL_STEPS.length - 1 ? "Başla" : "Devam";
+    tutorialStep === TUTORIAL_STEPS.length - 1 ? t("start") : t("continue");
 }
 
 function showTutorial() {
@@ -1453,11 +1440,40 @@ el.btnTutorialNext.addEventListener("click", () => {
   }
 });
 
+function setupLanguage() {
+  for (const lang of LANGUAGES) {
+    const opt = document.createElement("option");
+    opt.value = lang.code;
+    opt.textContent = lang.name;
+    el.langSelect.appendChild(opt);
+  }
+  el.langSelect.value = getLang();
+  el.langSelect.addEventListener("change", () => {
+    setLang(el.langSelect.value);
+    applyAllTranslations();
+    playClick();
+  });
+}
+
+function applyAllTranslations() {
+  applyStaticTranslations();
+  el.splashLevel.textContent = t("level_label", { n: state.level + 1 });
+  if (!el.game.classList.contains("hidden") && state.mode !== "daily") {
+    el.levelTitle.textContent = t("level_label", { n: state.level + 1 });
+  }
+  updateDailyCard();
+  renderCollection();
+  renderAchievements();
+  if (!el.tutorialOverlay.classList.contains("hidden")) renderTutorialStep();
+}
+
 loadProgress();
 loadSettings();
 loadStars();
 loadRecords();
 applySettings();
+setupLanguage();
+applyStaticTranslations();
 renderCollection();
 renderAchievements();
 setupBoardZoom();
