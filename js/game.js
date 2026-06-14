@@ -592,12 +592,22 @@ function pointerMid(a, b) {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
+// A single-finger press counts as a drag (and suppresses the tap-to-remove
+// click) once it moves past this many pixels.
+const PAN_DRAG_THRESHOLD = 6;
+
 function setupBoardZoom() {
   const pointers = new Map();
   let pinch = null;
+  let pan = null;
 
   el.boardWrap.addEventListener("pointerdown", (e) => {
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) {
+      pan = { startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, moved: false };
+    } else {
+      pan = null;
+    }
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       pinch = {
@@ -630,16 +640,45 @@ function setupBoardZoom() {
       }
       applyBoardTransform();
       e.preventDefault();
+    } else if (pointers.size === 1 && pan) {
+      const dx = e.clientX - pan.lastX;
+      const dy = e.clientY - pan.lastY;
+      if (!pan.moved && Math.hypot(e.clientX - pan.startX, e.clientY - pan.startY) > PAN_DRAG_THRESHOLD) {
+        pan.moved = true;
+      }
+      if (pan.moved) {
+        state.boardPanX += dx;
+        state.boardPanY += dy;
+        clampBoardPan();
+        applyBoardTransform();
+        e.preventDefault();
+      }
+      pan.lastX = e.clientX;
+      pan.lastY = e.clientY;
     }
   });
 
   const endPointer = (e) => {
+    if (pointers.size === 1 && pan && pan.moved) {
+      state.suppressBoardClick = true;
+    }
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
+    if (pointers.size === 0) pan = null;
   };
   el.boardWrap.addEventListener("pointerup", endPointer);
   el.boardWrap.addEventListener("pointercancel", endPointer);
   el.boardWrap.addEventListener("pointerleave", endPointer);
+
+  // If the pointer-up that ended a drag also produces a click on an arrow,
+  // swallow it so dragging the board doesn't accidentally remove a cord.
+  el.board.addEventListener("click", (e) => {
+    if (state.suppressBoardClick) {
+      state.suppressBoardClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }, { capture: true });
 }
 
 // Soft rounded panel plus a faint dot at every grid cell, so the puzzle reads

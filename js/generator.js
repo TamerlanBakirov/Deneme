@@ -63,19 +63,35 @@
     const arrows = [];
     const totalCells = rows * cols;
 
-    let attemptsLeft = totalCells * 60;
+    let attemptsLeft = totalCells * 120;
     while (occupied.size / totalCells < fillTarget && attemptsLeft-- > 0) {
       const hr = Math.floor(rand() * rows);
       const hc = Math.floor(rand() * cols);
       if (occupied.has(`${hr},${hc}`)) continue;
       const head = { r: hr, c: hc };
 
-      // Pick a travel direction whose forward ray is currently clear.
+      // Pick a travel direction whose forward ray is currently clear. Prefer
+      // directions whose backward neighbour is also free, so the body has
+      // room to extend past a single cell (otherwise long cords degenerate
+      // into lots of length-1 cords).
+      const candidates = shuffle(DIR_NAMES, rand);
       let dir = null;
-      for (const d of shuffle(DIR_NAMES, rand)) {
-        if (rayClear(head, d, rows, cols, occupied)) {
+      for (const d of candidates) {
+        if (!rayClear(head, d, rows, cols, occupied)) continue;
+        const back = DIRS[OPPOSITE[d]];
+        const br = head.r + back.dr;
+        const bc = head.c + back.dc;
+        if (br >= 0 && br < rows && bc >= 0 && bc < cols && !occupied.has(`${br},${bc}`)) {
           dir = d;
           break;
+        }
+      }
+      if (!dir) {
+        for (const d of candidates) {
+          if (rayClear(head, d, rows, cols, occupied)) {
+            dir = d;
+            break;
+          }
         }
       }
       if (!dir) continue;
