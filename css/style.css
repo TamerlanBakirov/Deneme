@@ -230,6 +230,119 @@ body {
   margin-bottom: 0;
 }
 
+/* ---------- Online daily leaderboard ---------- */
+.leaderboard-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--panel);
+  border: 1px solid #efe6d8;
+  border-radius: 22px;
+  padding: 16px 18px;
+  margin-top: 12px;
+  box-shadow: 0 6px 18px rgba(43, 179, 163, 0.1);
+}
+
+.leaderboard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.leaderboard-head h3 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent-deep);
+  margin: 0;
+}
+
+.lb-name-btn {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--divider);
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leaderboard-item {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.leaderboard-item.mine {
+  background: rgba(43, 179, 163, 0.12);
+  font-weight: 700;
+}
+
+.lb-rank {
+  font-weight: 800;
+  color: var(--accent-deep);
+  text-align: center;
+}
+
+.lb-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.lb-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--accent-deep);
+}
+
+.leaderboard-empty {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin: 4px 0 0;
+}
+
+/* ---------- Player name overlay ---------- */
+.name-hint {
+  font-size: 13px;
+}
+
+.name-input {
+  width: 100%;
+  font-size: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--divider);
+  background: var(--bg);
+  color: inherit;
+  text-align: center;
+  outline: none;
+}
+
+.name-input:focus {
+  border-color: var(--accent);
+}
+
 /* ---------- Bottom navigation ---------- */
 .bottom-nav {
   display: flex;

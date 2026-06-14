@@ -32,6 +32,15 @@
           <p class="daily-status" id="daily-status">Bugünün özel görevini çöz ve hızını ölç!</p>
           <button id="btn-daily" class="play-btn secondary">Günlük Göreve Başla</button>
         </div>
+
+        <div class="leaderboard-card hidden" id="leaderboard-card">
+          <div class="leaderboard-head">
+            <h3>🏆 Bugünün Sıralaması</h3>
+            <button id="btn-edit-name" class="lb-name-btn">✏️ <span id="lb-player-name">Oyuncu</span></button>
+          </div>
+          <ol class="leaderboard-list" id="leaderboard-list"></ol>
+          <p class="leaderboard-empty hidden" id="leaderboard-empty">Henüz sıralama yok. İlk skoru sen koy!</p>
+        </div>
       </div>
     </section>
 
@@ -162,6 +171,16 @@
       </div>
     </div>
 
+    <!-- Player name for online leaderboard -->
+    <div id="name-overlay" class="overlay hidden">
+      <div class="overlay-card name-card">
+        <h2>Görünen Adın</h2>
+        <p class="name-hint">Bu ad günlük görev sıralamasında arkadaşlarına gösterilecek.</p>
+        <input type="text" id="name-input" class="name-input" maxlength="16" placeholder="Oyuncu" />
+        <button id="btn-name-save" class="play-btn">Kaydet</button>
+      </div>
+    </div>
+
     <!-- How-to-play tutorial -->
     <div id="tutorial-overlay" class="overlay hidden">
       <div class="overlay-card tutorial-card">
@@ -177,6 +196,8 @@
 
   <script src="js/levels.js"></script>
   <script src="js/generator.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/leaderboard.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

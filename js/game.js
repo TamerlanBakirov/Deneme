@@ -65,6 +65,14 @@ const el = {
   btnDaily: document.getElementById("btn-daily"),
   dailyStatus: document.getElementById("daily-status"),
   dailyTimer: document.getElementById("daily-timer"),
+  leaderboardCard: document.getElementById("leaderboard-card"),
+  leaderboardList: document.getElementById("leaderboard-list"),
+  leaderboardEmpty: document.getElementById("leaderboard-empty"),
+  lbPlayerName: document.getElementById("lb-player-name"),
+  btnEditName: document.getElementById("btn-edit-name"),
+  nameOverlay: document.getElementById("name-overlay"),
+  nameInput: document.getElementById("name-input"),
+  btnNameSave: document.getElementById("btn-name-save"),
   bottomNav: document.getElementById("bottom-nav"),
   navBtns: document.querySelectorAll(".nav-btn"),
   levelGrid: document.getElementById("level-grid"),
@@ -160,6 +168,21 @@ el.btnResetProgress.addEventListener("click", () => {
 el.btnUndo.addEventListener("click", () => { playClick(); undoMove(); });
 el.btnHint.addEventListener("click", () => { playClick(); showHint(); });
 el.btnHowToPlay.addEventListener("click", () => { playClick(); showTutorial(); });
+
+el.btnEditName.addEventListener("click", () => {
+  playClick();
+  el.nameInput.value = Leaderboard.getPlayerName();
+  el.nameOverlay.classList.remove("hidden");
+  el.nameInput.focus();
+});
+
+el.btnNameSave.addEventListener("click", () => {
+  playClick();
+  const name = Leaderboard.setPlayerName(el.nameInput.value);
+  el.lbPlayerName.textContent = name || "Adını seç";
+  el.nameOverlay.classList.add("hidden");
+  refreshLeaderboard();
+});
 
 function loadProgress() {
   const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
@@ -537,6 +560,45 @@ function updateDailyCard() {
   };
   tick();
   state.dailyCountdownInterval = setInterval(tick, 1000);
+
+  refreshLeaderboard();
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function refreshLeaderboard() {
+  if (!Leaderboard.isConfigured()) {
+    el.leaderboardCard.classList.add("hidden");
+    return;
+  }
+  el.leaderboardCard.classList.remove("hidden");
+  el.lbPlayerName.textContent = Leaderboard.getPlayerName() || "Adını seç";
+
+  const entries = await Leaderboard.fetchDailyLeaderboard(dateKey(), 10);
+  el.leaderboardList.innerHTML = "";
+
+  if (!entries || entries.length === 0) {
+    el.leaderboardEmpty.textContent = !entries
+      ? "Sıralama yüklenemedi. Bağlantını kontrol et."
+      : "Henüz sıralama yok. İlk skoru sen koy!";
+    el.leaderboardEmpty.classList.remove("hidden");
+    return;
+  }
+
+  el.leaderboardEmpty.classList.add("hidden");
+  const myId = Leaderboard.getPlayerId();
+  entries.forEach((entry, i) => {
+    const li = document.createElement("li");
+    li.className = "leaderboard-item" + (entry.id === myId ? " mine" : "");
+    li.innerHTML = `<span class="lb-rank">${i + 1}</span><span class="lb-name">${escapeHtml(
+      entry.name || "Oyuncu"
+    )}</span><span class="lb-score">${entry.score}</span>`;
+    el.leaderboardList.appendChild(li);
+  });
 }
 
 function startDaily() {
@@ -1296,6 +1358,16 @@ function onDailyWin() {
     : prev;
   saveDailyRecord(record);
 
+  if (Leaderboard.isConfigured()) {
+    if (!Leaderboard.getPlayerName()) {
+      el.nameInput.value = "";
+      el.nameOverlay.classList.remove("hidden");
+    }
+    Leaderboard.submitDailyScore(dateKey(), score, timeMs, heartsLeft).then(() =>
+      refreshLeaderboard()
+    );
+  }
+
   el.winStars.classList.add("hidden");
   el.winRecords.classList.add("hidden");
   el.winTitle.textContent = "Günlük Görev Tamamlandı!";
@@ -1390,3 +1462,30 @@ renderCollection();
 renderAchievements();
 setupBoardZoom();
 showTab("home");
+
+// ---------- Native back button (Android, via Capacitor) ----------
+
+(function setupBackButton() {
+  const CapApp = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if (!CapApp || !CapApp.addListener) return;
+
+  CapApp.addListener("backButton", () => {
+    if (!el.nameOverlay.classList.contains("hidden")) {
+      el.nameOverlay.classList.add("hidden");
+    } else if (!el.tutorialOverlay.classList.contains("hidden")) {
+      closeTutorial();
+    } else if (!el.winOverlay.classList.contains("hidden")) {
+      el.winOverlay.classList.add("hidden");
+    } else if (!el.loseOverlay.classList.contains("hidden")) {
+      el.loseOverlay.classList.add("hidden");
+    } else if (!el.game.classList.contains("hidden")) {
+      playClick();
+      showTab(state.returnTab);
+    } else if (state.tab !== "home") {
+      playClick();
+      showTab("home");
+    } else {
+      CapApp.exitApp();
+    }
+  });
+})();
