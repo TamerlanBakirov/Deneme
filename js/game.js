@@ -28,6 +28,9 @@ const state = {
   returnTab: "home",
   settings: { sound: true, vibration: true, dark: false },
   stars: new Array(LEVELS.length).fill(0), // best star rating (0-3) per level
+  boardZoom: 1,
+  boardPanX: 0,
+  boardPanY: 0,
 };
 
 const el = {
@@ -43,6 +46,7 @@ const el = {
   dailyClock: document.getElementById("daily-clock"),
   hearts: document.getElementById("hearts"),
   board: document.getElementById("board"),
+  boardWrap: document.getElementById("board-wrap"),
   winOverlay: document.getElementById("win-overlay"),
   winTitle: document.getElementById("win-title"),
   winStats: document.getElementById("win-stats"),
@@ -552,6 +556,90 @@ function renderBoard() {
     el.board.appendChild(groupEl);
     i++;
   }
+
+  resetBoardView();
+}
+
+// ---------- Pinch-to-zoom / pan ----------
+
+const BOARD_ZOOM_MIN = 1;
+const BOARD_ZOOM_MAX = 4;
+
+function resetBoardView() {
+  state.boardZoom = 1;
+  state.boardPanX = 0;
+  state.boardPanY = 0;
+  applyBoardTransform();
+}
+
+function applyBoardTransform() {
+  el.board.style.transform = `translate(${state.boardPanX}px, ${state.boardPanY}px) scale(${state.boardZoom})`;
+}
+
+function clampBoardPan() {
+  const rect = el.boardWrap.getBoundingClientRect();
+  const maxX = (rect.width * (state.boardZoom - 1)) / 2;
+  const maxY = (rect.height * (state.boardZoom - 1)) / 2;
+  state.boardPanX = Math.max(-maxX, Math.min(maxX, state.boardPanX));
+  state.boardPanY = Math.max(-maxY, Math.min(maxY, state.boardPanY));
+}
+
+function pointerDist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function pointerMid(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+function setupBoardZoom() {
+  const pointers = new Map();
+  let pinch = null;
+
+  el.boardWrap.addEventListener("pointerdown", (e) => {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinch = {
+        startDist: pointerDist(a, b),
+        startZoom: state.boardZoom,
+        startMid: pointerMid(a, b),
+        startPanX: state.boardPanX,
+        startPanY: state.boardPanY,
+      };
+    }
+  });
+
+  el.boardWrap.addEventListener("pointermove", (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2 && pinch) {
+      const [a, b] = [...pointers.values()];
+      const dist = pointerDist(a, b);
+      const mid = pointerMid(a, b);
+      let zoom = pinch.startZoom * (dist / pinch.startDist);
+      zoom = Math.max(BOARD_ZOOM_MIN, Math.min(BOARD_ZOOM_MAX, zoom));
+      state.boardZoom = zoom;
+      state.boardPanX = pinch.startPanX + (mid.x - pinch.startMid.x);
+      state.boardPanY = pinch.startPanY + (mid.y - pinch.startMid.y);
+      if (state.boardZoom <= BOARD_ZOOM_MIN) {
+        state.boardPanX = 0;
+        state.boardPanY = 0;
+      } else {
+        clampBoardPan();
+      }
+      applyBoardTransform();
+      e.preventDefault();
+    }
+  });
+
+  const endPointer = (e) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+  };
+  el.boardWrap.addEventListener("pointerup", endPointer);
+  el.boardWrap.addEventListener("pointercancel", endPointer);
+  el.boardWrap.addEventListener("pointerleave", endPointer);
 }
 
 // Soft rounded panel plus a faint dot at every grid cell, so the puzzle reads
@@ -872,4 +960,5 @@ loadStars();
 applySettings();
 renderCollection();
 renderAchievements();
+setupBoardZoom();
 showTab("home");

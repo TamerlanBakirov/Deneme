@@ -8,7 +8,7 @@ const { generateLevel } = require("../js/generator.js");
 
 const configs = [];
 for (let i = 0; i < 40; i++) {
-  const size = Math.min(5 + i, 20);
+  const size = 5 + i;
   const fillTarget = Math.min(0.55 + i * 0.012, 0.88);
   const maxLen = Math.min(3 + Math.floor(i / 2), 14);
   const minLen = Math.min(1 + Math.floor(i / 5), 5);
