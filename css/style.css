@@ -585,6 +585,86 @@ body {
   max-width: 150px;
 }
 
+/* ---------- Mini-games hub ---------- */
+#arcade-screen {
+  overflow-y: auto;
+}
+
+.arcade-subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  text-align: center;
+  margin: -4px 0 14px;
+  padding: 0 8px;
+}
+
+.arcade-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  align-content: start;
+  padding-bottom: 8px;
+}
+
+.arcade-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 16px 14px;
+  border: 1px solid var(--divider);
+  border-radius: 20px;
+  background: var(--panel);
+  cursor: pointer;
+  text-align: left;
+  border-left: 4px solid var(--card-accent, var(--accent));
+  box-shadow: 0 6px 16px rgba(60, 45, 20, 0.08);
+  transition: transform 0.12s var(--ease-out);
+}
+
+.arcade-card:active {
+  transform: scale(0.96);
+}
+
+.arcade-card-emoji {
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.arcade-card-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.arcade-card-desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.arcade-card-best {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--card-accent, var(--accent-deep));
+  margin-top: 4px;
+  min-height: 14px;
+}
+
+.arcade-score {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.arcade-root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* ---------- Buttons ---------- */
 .play-btn {
   width: 100%;

@@ -52,6 +52,13 @@
       <div class="achv-grid" id="achv-grid"></div>
     </section>
 
+    <!-- Mini-games hub -->
+    <section id="arcade-screen" class="screen tab-screen hidden">
+      <div class="tab-header"><h2 data-i18n="arcade_title">Mini Games</h2></div>
+      <p class="arcade-subtitle" data-i18n="arcade_subtitle">More ways to play and beat your best.</p>
+      <div class="arcade-grid" id="arcade-grid"></div>
+    </section>
+
     <!-- Settings -->
     <section id="settings-screen" class="screen tab-screen hidden">
       <div class="tab-header"><h2 data-i18n="settings_title">Settings</h2></div>
@@ -80,6 +87,14 @@
         </div>
       </div>
       <div class="settings-list">
+        <button class="settings-row settings-action" id="btn-remove-ads">
+          <span class="settings-label" data-i18n="remove_ads">Remove Ads</span>
+        </button>
+        <button class="settings-row settings-action" id="btn-restore-purchases">
+          <span class="settings-label" data-i18n="restore_purchases">Restore Purchases</span>
+        </button>
+      </div>
+      <div class="settings-list">
         <button class="settings-row settings-action" id="btn-how-to-play">
           <span class="settings-label" data-i18n="how_to_play">How to Play</span>
         </button>
@@ -102,6 +117,10 @@
       <button class="nav-btn" data-tab="collection">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.4" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.4" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.4" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.4" /></svg>
         <span data-i18n="nav_levels">Levels</span>
+      </button>
+      <button class="nav-btn" data-tab="arcade">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="11" rx="3.5" /><path d="M7 10v4M5 12h4" /><circle cx="16" cy="11" r="1" /><circle cx="18.5" cy="13.5" r="1" /></svg>
+        <span data-i18n="nav_arcade">Games</span>
       </button>
       <button class="nav-btn" data-tab="settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" /></svg>
@@ -144,6 +163,22 @@
       </footer>
     </section>
 
+    <!-- Mini-game host -->
+    <section id="arcade-game" class="screen hidden">
+      <header class="game-header">
+        <div class="header-top">
+          <div class="header-left">
+            <button id="arcade-back" class="circle-btn" title="Back">&#9664;</button>
+          </div>
+          <span class="header-level" id="arcade-game-title"></span>
+          <div class="header-right">
+            <span id="arcade-game-score" class="arcade-score"></span>
+          </div>
+        </div>
+      </header>
+      <div class="arcade-root" id="arcade-root"></div>
+    </section>
+
     <!-- Win overlay -->
     <div id="win-overlay" class="overlay hidden">
       <div class="overlay-card">
@@ -173,7 +208,8 @@
         <div class="overlay-tri" aria-hidden="true"></div>
         <h2 data-i18n="hearts_gone">Out of Hearts</h2>
         <p data-i18n="breathe_retry">Take a breath and try again.</p>
-        <button id="btn-retry" class="play-btn" data-i18n="retry">Try Again</button>
+        <button id="btn-watch-ad" class="play-btn hidden"></button>
+        <button id="btn-retry" class="play-btn secondary" data-i18n="retry">Try Again</button>
       </div>
     </div>
 
@@ -205,6 +241,12 @@
   <script src="js/i18n.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/leaderboard.js"></script>
+  <script src="js/ads.js"></script>
+  <script src="js/arcade.js"></script>
+  <script src="js/games/memory.js"></script>
+  <script src="js/games/flow.js"></script>
+  <script src="js/games/g2048.js"></script>
+  <script src="js/games/blocks.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

@@ -44,6 +44,8 @@ const el = {
   home: document.getElementById("home-screen"),
   challenge: document.getElementById("challenge-screen"),
   collection: document.getElementById("collection-screen"),
+  arcade: document.getElementById("arcade-screen"),
+  arcadeGame: document.getElementById("arcade-game"),
   settings: document.getElementById("settings-screen"),
   game: document.getElementById("game-screen"),
   splashLevel: document.getElementById("splash-level"),
@@ -84,6 +86,10 @@ const el = {
   toggleDark: document.getElementById("toggle-dark"),
   toggleColors: document.getElementById("toggle-colors"),
   btnResetProgress: document.getElementById("btn-reset-progress"),
+  btnRemoveAds: document.getElementById("btn-remove-ads"),
+  btnRestorePurchases: document.getElementById("btn-restore-purchases"),
+  btnWatchAd: document.getElementById("btn-watch-ad"),
+  arcadeBack: document.getElementById("arcade-back"),
   btnHowToPlay: document.getElementById("btn-how-to-play"),
   btnUndo: document.getElementById("btn-undo"),
   btnHint: document.getElementById("btn-hint"),
@@ -120,6 +126,56 @@ document.getElementById("btn-retry").addEventListener("click", () => {
   else playLevel(state.level);
 });
 el.btnDaily.addEventListener("click", () => { playClick(); startDaily(); });
+
+// Optional rewarded ad: revive with a couple of hearts instead of restarting.
+const REVIVE_HEARTS = 2;
+el.btnWatchAd.addEventListener("click", async () => {
+  playClick();
+  el.btnWatchAd.disabled = true;
+  const granted = await Ads.showRewarded();
+  el.btnWatchAd.disabled = false;
+  if (granted) {
+    el.loseOverlay.classList.add("hidden");
+    state.hearts = REVIVE_HEARTS;
+    renderHearts();
+    if (state.mode === "daily" && !state.gameClockInterval) {
+      state.gameClockInterval = setInterval(() => {
+        el.dailyClock.textContent = formatClock(performance.now() - state.dailyStart);
+      }, 100);
+    }
+  } else {
+    el.btnWatchAd.textContent = t("not_available_now");
+  }
+});
+
+el.arcadeBack.addEventListener("click", () => { playClick(); Arcade.closeGame(); });
+
+el.btnRemoveAds.addEventListener("click", async () => {
+  playClick();
+  if (Ads.isPremium()) { flashSettingsLabel(el.btnRemoveAds, t("ads_removed")); return; }
+  const ok = await Ads.purchasePremium();
+  flashSettingsLabel(el.btnRemoveAds, ok ? t("ads_removed") : t("not_available_now"));
+  if (ok) updatePremiumUi();
+});
+
+el.btnRestorePurchases.addEventListener("click", async () => {
+  playClick();
+  const ok = await Ads.restorePurchases();
+  flashSettingsLabel(el.btnRestorePurchases, ok ? t("ads_removed") : t("not_available_now"));
+  if (ok) updatePremiumUi();
+});
+
+function flashSettingsLabel(btn, msg) {
+  const label = btn.querySelector(".settings-label");
+  if (!label) return;
+  const key = label.getAttribute("data-i18n");
+  label.textContent = msg;
+  setTimeout(() => { if (key) label.textContent = t(key); }, 1800);
+}
+
+function updatePremiumUi() {
+  el.btnRemoveAds.classList.toggle("hidden", Ads.isPremium());
+}
 
 el.navBtns.forEach((btn) => {
   btn.addEventListener("click", () => { playClick(); showTab(btn.dataset.tab); });
@@ -650,6 +706,7 @@ function hideTabScreens() {
   el.home.classList.add("hidden");
   el.challenge.classList.add("hidden");
   el.collection.classList.add("hidden");
+  el.arcade.classList.add("hidden");
   el.settings.classList.add("hidden");
   el.bottomNav.classList.add("hidden");
 }
@@ -660,8 +717,10 @@ function showTab(tab) {
     state.gameClockInterval = null;
   }
   state.tab = tab;
+  if (typeof Arcade !== "undefined" && Arcade.isOpen()) Arcade.closeGame(false);
   el.dailyClock.classList.add("hidden");
   el.game.classList.add("hidden");
+  el.arcadeGame.classList.add("hidden");
   el.winOverlay.classList.add("hidden");
   el.loseOverlay.classList.add("hidden");
   el.bottomNav.classList.remove("hidden");
@@ -669,6 +728,7 @@ function showTab(tab) {
   el.home.classList.toggle("hidden", tab !== "home");
   el.challenge.classList.toggle("hidden", tab !== "challenge");
   el.collection.classList.toggle("hidden", tab !== "collection");
+  el.arcade.classList.toggle("hidden", tab !== "arcade");
   el.settings.classList.toggle("hidden", tab !== "settings");
 
   el.navBtns.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
@@ -679,6 +739,7 @@ function showTab(tab) {
     renderCollection();
     renderAchievements();
   }
+  if (tab === "arcade") Arcade.renderGrid();
 }
 
 function renderCollection() {
@@ -1292,6 +1353,12 @@ function loseHeart() {
     }
     setTimeout(() => {
       if (state.arrows.every((a) => a.removed)) return; // won before the timeout fired
+      const canRevive = Ads.canReward();
+      el.btnWatchAd.classList.toggle("hidden", !canRevive);
+      if (canRevive) {
+        el.btnWatchAd.disabled = false;
+        el.btnWatchAd.textContent = t("watch_ad_continue", { n: REVIVE_HEARTS });
+      }
       el.loseOverlay.classList.remove("hidden");
     }, 450);
   }
@@ -1464,6 +1531,7 @@ function applyAllTranslations() {
   updateDailyCard();
   renderCollection();
   renderAchievements();
+  if (typeof Arcade !== "undefined") Arcade.renderGrid();
   if (!el.tutorialOverlay.classList.contains("hidden")) renderTutorialStep();
 }
 
@@ -1476,6 +1544,9 @@ setupLanguage();
 applyStaticTranslations();
 renderCollection();
 renderAchievements();
+Arcade.renderGrid();
+Ads.init();
+updatePremiumUi();
 setupBoardZoom();
 showTab("home");
 
@@ -1494,6 +1565,9 @@ showTab("home");
       el.winOverlay.classList.add("hidden");
     } else if (!el.loseOverlay.classList.contains("hidden")) {
       el.loseOverlay.classList.add("hidden");
+    } else if (Arcade.isOpen()) {
+      playClick();
+      Arcade.closeGame();
     } else if (!el.game.classList.contains("hidden")) {
       playClick();
       showTab(state.returnTab);
