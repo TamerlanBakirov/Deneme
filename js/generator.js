@@ -130,7 +130,7 @@
         // Prefer continuing straight (momentum) so cords run long before
         // turning, then fall back to a random turn.
         const dirsToTry = firstStep
-          ? [stepDir, ...shuffle(DIR_NAMES, rand)]
+          ? [stepDir]
           : (rand() < 0.7 ? [stepDir, ...shuffle(DIR_NAMES, rand)] : shuffle(DIR_NAMES, rand));
         firstStep = false;
         let moved = false;
