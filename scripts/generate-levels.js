@@ -8,10 +8,10 @@ const { generateLevel } = require("../js/generator.js");
 
 const configs = [];
 for (let i = 0; i < 40; i++) {
-  const size = Math.min(5 + Math.floor(i / 2), 18);
-  const fillTarget = Math.min(0.55 + i * 0.009, 0.85);
-  const maxLen = Math.min(3 + Math.floor(i / 3), 12);
-  const minLen = Math.min(1 + Math.floor(i / 8), 4);
+  const size = Math.min(5 + i, 20);
+  const fillTarget = Math.min(0.55 + i * 0.012, 0.88);
+  const maxLen = Math.min(3 + Math.floor(i / 2), 14);
+  const minLen = Math.min(1 + Math.floor(i / 5), 5);
   configs.push({ rows: size, cols: size, fillTarget, maxLen, minLen });
 }
 
