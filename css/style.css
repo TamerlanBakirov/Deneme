@@ -13,6 +13,10 @@
   --board-panel: #faf6ee;
   --grid-dot: #e6ddcb;
   --muted: #9b9286;
+  --dir-up: #4a90d9;    --dir-up-deep: #336fb0;
+  --dir-down: #e0843a;  --dir-down-deep: #bd6826;
+  --dir-left: #4caf6e;  --dir-left-deep: #357f50;
+  --dir-right: #9b6dd0; --dir-right-deep: #774fa8;
   --ease-out: cubic-bezier(0.22, 0.8, 0.28, 1);
   --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.25);
   --heart-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s-7.5-4.6-10-9.1C-0.2 7.7 2 4 5.5 4 7.8 4 9.4 5.3 12 8c2.6-2.7 4.2-4 6.5-4C22 4 24.2 7.7 22 11.9 19.5 16.4 12 21 12 21z'/%3E%3C/svg%3E");
@@ -30,6 +34,10 @@
   --board-panel: #26262f;
   --grid-dot: #3a3a47;
   --muted: #8b8a99;
+  --dir-up: #6aa9ec;    --dir-up-deep: #8fc0f5;
+  --dir-down: #f0a05a;  --dir-down-deep: #f7bd86;
+  --dir-left: #6fcf8e;  --dir-left-deep: #97e0ad;
+  --dir-right: #b78ee6; --dir-right-deep: #ceb0f2;
 }
 
 * {
@@ -699,12 +707,99 @@ body {
   75% { transform: translateX(4px) rotate(1deg); }
 }
 
+/* Hint: briefly pulse a removable cord so the player can find a safe move. */
+.arrow-group.hint {
+  animation: hint-pulse 0.7s ease 3;
+}
+
+.arrow-group.hint .arrow-stroke,
+.arrow-group.hint .arrow-head,
+.arrow-group.hint .arrow-knot {
+  stroke: var(--accent);
+  fill: var(--accent);
+}
+
+.arrow-group.hint .arrow-stroke {
+  fill: none;
+}
+
+@keyframes hint-pulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(43, 179, 163, 0)); }
+  50% { filter: drop-shadow(0 0 7px rgba(43, 179, 163, 0.95)); }
+}
+
+/* Direction-coded cord colors (toggleable via settings). Muted so they sit
+   comfortably with the warm board, but distinct enough to read direction at
+   a glance. */
+.app.arrow-colors .arrow-group.dir-up .arrow-stroke { stroke: var(--dir-up); }
+.app.arrow-colors .arrow-group.dir-up .arrow-head,
+.app.arrow-colors .arrow-group.dir-up .arrow-knot { fill: var(--dir-up-deep); }
+.app.arrow-colors .arrow-group.dir-down .arrow-stroke { stroke: var(--dir-down); }
+.app.arrow-colors .arrow-group.dir-down .arrow-head,
+.app.arrow-colors .arrow-group.dir-down .arrow-knot { fill: var(--dir-down-deep); }
+.app.arrow-colors .arrow-group.dir-left .arrow-stroke { stroke: var(--dir-left); }
+.app.arrow-colors .arrow-group.dir-left .arrow-head,
+.app.arrow-colors .arrow-group.dir-left .arrow-knot { fill: var(--dir-left-deep); }
+.app.arrow-colors .arrow-group.dir-right .arrow-stroke { stroke: var(--dir-right); }
+.app.arrow-colors .arrow-group.dir-right .arrow-head,
+.app.arrow-colors .arrow-group.dir-right .arrow-knot { fill: var(--dir-right-deep); }
+
 .game-footer {
-  height: 28px;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
   background: var(--panel);
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
   margin: 0 10px;
+}
+
+.footer-btn {
+  flex: 1;
+  max-width: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border: none;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease-out), background 0.15s ease, opacity 0.15s ease;
+}
+
+.footer-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.footer-btn:active {
+  transform: scale(0.94);
+}
+
+.footer-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+
+.footer-btn.flash {
+  animation: footer-flash 0.4s ease;
+}
+
+@keyframes footer-flash {
+  0% { background: var(--accent); color: #fff; }
+  100% { background: var(--accent-soft); color: var(--accent-deep); }
 }
 
 /* ---------- Overlays ---------- */
@@ -796,4 +891,86 @@ body {
 .win-daily-next {
   font-size: 13px;
   color: var(--muted);
+}
+
+/* ---------- Win records (level mode) ---------- */
+.win-records {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: -2px 0 4px;
+}
+
+.win-record-item {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.win-record-item.best::after {
+  content: " 🏅";
+}
+
+/* Personal-best time shown under the stars in the level grid. */
+.cell-best {
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.level-cell:not(.done) .cell-best {
+  color: var(--muted);
+}
+
+.cell-perfect {
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* ---------- Tutorial ---------- */
+.tutorial-card .tutorial-emoji {
+  font-size: 46px;
+  line-height: 1;
+  animation: tutorial-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes tutorial-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+#tutorial-text {
+  min-height: 44px;
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 4px;
+}
+
+.tutorial-dots .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--heart-empty);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.tutorial-dots .dot.active {
+  background: var(--accent);
+  transform: scale(1.2);
+}
+
+/* ---------- Confetti ---------- */
+#confetti-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 20;
 }

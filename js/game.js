@@ -13,21 +13,27 @@ const STORAGE_KEY = "knot-escape-progress";
 const DAILY_KEY = "knot-escape-daily";
 const SETTINGS_KEY = "knot-escape-settings";
 const STARS_KEY = "knot-escape-stars";
+const RECORDS_KEY = "knot-escape-records";
+const TUTORIAL_KEY = "knot-escape-tutorial";
 const DAILY_CONFIG = { rows: 8, cols: 8, fillTarget: 0.68, maxLen: 6, minLen: 2 };
 
 const state = {
   level: 0,
-  arrows: [], // { cells:[[r,c]...], dir, removed }
+  arrows: [], // { cells:[[r,c]...], dir, removed, el }
   hearts: MAX_HEARTS,
   geom: null, // layout info for the current board
   mode: "level", // "level" | "daily"
   dailyStart: 0,
+  levelStart: 0, // wall-clock start of the current level (for records)
+  moveCount: 0, // successful removals this attempt
+  history: [], // stack of removed arrows, for undo
   gameClockInterval: null,
   dailyCountdownInterval: null,
   tab: "home", // "home" | "challenge" | "collection" | "settings"
   returnTab: "home",
-  settings: { sound: true, vibration: true, dark: false },
+  settings: { sound: true, vibration: true, dark: false, colors: true },
   stars: new Array(LEVELS.length).fill(0), // best star rating (0-3) per level
+  records: new Array(LEVELS.length).fill(null), // best { timeMs, moves } per level
   boardZoom: 1,
   boardPanX: 0,
   boardPanY: 0,
@@ -68,7 +74,20 @@ const el = {
   toggleSound: document.getElementById("toggle-sound"),
   toggleVibration: document.getElementById("toggle-vibration"),
   toggleDark: document.getElementById("toggle-dark"),
+  toggleColors: document.getElementById("toggle-colors"),
   btnResetProgress: document.getElementById("btn-reset-progress"),
+  btnHowToPlay: document.getElementById("btn-how-to-play"),
+  btnUndo: document.getElementById("btn-undo"),
+  btnHint: document.getElementById("btn-hint"),
+  winRecords: document.getElementById("win-records"),
+  winRecordTime: document.getElementById("win-record-time"),
+  winRecordMoves: document.getElementById("win-record-moves"),
+  tutorialOverlay: document.getElementById("tutorial-overlay"),
+  tutorialEmoji: document.getElementById("tutorial-emoji"),
+  tutorialTitle: document.getElementById("tutorial-title"),
+  tutorialText: document.getElementById("tutorial-text"),
+  tutorialDots: document.getElementById("tutorial-dots"),
+  btnTutorialNext: document.getElementById("btn-tutorial-next"),
 };
 
 document.getElementById("btn-play").addEventListener("click", () => { playClick(); playLevel(state.level); });
@@ -118,16 +137,29 @@ el.toggleDark.addEventListener("click", () => {
   applySettings();
 });
 
+el.toggleColors.addEventListener("click", () => {
+  state.settings.colors = !state.settings.colors;
+  saveSettings();
+  applySettings();
+  playClick();
+});
+
 el.btnResetProgress.addEventListener("click", () => {
   if (!confirm("Tüm seviye ilerlemen sıfırlanacak. Emin misin?")) return;
   state.level = 0;
   state.stars.fill(0);
+  state.records.fill(null);
   saveProgress();
   saveStars();
+  saveRecords();
   el.splashNum.textContent = "1";
   renderCollection();
   renderAchievements();
 });
+
+el.btnUndo.addEventListener("click", () => { playClick(); undoMove(); });
+el.btnHint.addEventListener("click", () => { playClick(); showHint(); });
+el.btnHowToPlay.addEventListener("click", () => { playClick(); showTutorial(); });
 
 function loadProgress() {
   const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
@@ -155,6 +187,26 @@ function loadStars() {
 
 function saveStars() {
   localStorage.setItem(STARS_KEY, JSON.stringify(state.stars));
+}
+
+function loadRecords() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    if (Array.isArray(raw)) {
+      for (let i = 0; i < state.records.length && i < raw.length; i++) {
+        const r = raw[i];
+        if (r && typeof r.timeMs === "number" && typeof r.moves === "number") {
+          state.records[i] = { timeMs: r.timeMs, moves: r.moves };
+        }
+      }
+    }
+  } catch (e) {
+    // ignore malformed storage
+  }
+}
+
+function saveRecords() {
+  localStorage.setItem(RECORDS_KEY, JSON.stringify(state.records));
 }
 
 // Star rating for a finished level, based on hearts left at the end.
@@ -241,12 +293,15 @@ function saveSettings() {
 
 function applySettings() {
   el.app.classList.toggle("dark", state.settings.dark);
+  el.app.classList.toggle("arrow-colors", state.settings.colors);
   el.toggleSound.classList.toggle("on", state.settings.sound);
   el.toggleSound.setAttribute("aria-checked", String(state.settings.sound));
   el.toggleVibration.classList.toggle("on", state.settings.vibration);
   el.toggleVibration.setAttribute("aria-checked", String(state.settings.vibration));
   el.toggleDark.classList.toggle("on", state.settings.dark);
   el.toggleDark.setAttribute("aria-checked", String(state.settings.dark));
+  el.toggleColors.classList.toggle("on", state.settings.colors);
+  el.toggleColors.setAttribute("aria-checked", String(state.settings.colors));
 }
 
 // ---------- Sound & haptics ----------
@@ -312,6 +367,98 @@ function vibrate(pattern) {
 function playWinChime() {
   playTone(660, 0.12);
   setTimeout(() => playTone(880, 0.18), 110);
+}
+
+// Airy "whoosh" as a cord slides off the board: filtered noise sweeping down
+// in pitch, like something rushing past.
+function playWhoosh() {
+  if (!state.settings.sound) return;
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const dur = 0.26;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.setValueAtTime(1500, now);
+  bp.frequency.exponentialRampToValueAtTime(420, now + dur);
+  bp.Q.value = 0.9;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.16, now + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  src.connect(bp).connect(gain).connect(ctx.destination);
+  src.start(now);
+  src.stop(now + dur);
+}
+
+// ---------- Confetti ----------
+
+function launchConfetti() {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let canvas = document.getElementById("confetti-canvas");
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    canvas.id = "confetti-canvas";
+    el.app.appendChild(canvas);
+  }
+  const rect = el.app.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const colors = ["#2bb3a3", "#ffc83d", "#ff5b6a", "#4a90d9", "#9b6dd0", "#e0843a"];
+  const parts = [];
+  for (let i = 0; i < 120; i++) {
+    parts.push({
+      x: rect.width / 2 + (Math.random() - 0.5) * 80,
+      y: rect.height * 0.42,
+      vx: (Math.random() - 0.5) * 9,
+      vy: -7 - Math.random() * 8,
+      size: 5 + Math.random() * 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rot: Math.random() * Math.PI,
+      vrot: (Math.random() - 0.5) * 0.35,
+      round: Math.random() < 0.45,
+    });
+  }
+  const gravity = 0.3;
+  const life = 2400;
+  const start = performance.now();
+
+  function frame(now) {
+    const t = now - start;
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    for (const p of parts) {
+      p.vy += gravity;
+      p.vx *= 0.99;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vrot;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.max(0, 1 - t / life);
+      ctx.fillStyle = p.color;
+      if (p.round) {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      }
+      ctx.restore();
+    }
+    if (t < life) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, rect.width, rect.height);
+  }
+  requestAnimationFrame(frame);
 }
 
 // ---------- Daily challenge helpers ----------
@@ -408,6 +555,8 @@ function startDaily() {
   }));
   state.hearts = MAX_HEARTS;
   state.dailyStart = performance.now();
+  state.history = [];
+  state.moveCount = 0;
 
   el.levelTitle.classList.add("hidden");
   el.dailyTitle.classList.remove("hidden");
@@ -423,6 +572,7 @@ function startDaily() {
   renderHearts();
   computeGeometry();
   renderBoard();
+  updateUndoButton();
 
   state.gameClockInterval = setInterval(() => {
     el.dailyClock.textContent = formatClock(performance.now() - state.dailyStart);
@@ -494,6 +644,14 @@ function renderCollection() {
       cell.appendChild(starRow);
     }
 
+    const rec = state.records[i];
+    if (rec) {
+      const best = document.createElement("span");
+      best.className = "cell-best";
+      best.textContent = (state.stars[i] >= 3 ? "✨ " : "") + formatClock(rec.timeMs);
+      cell.appendChild(best);
+    }
+
     el.levelGrid.appendChild(cell);
   }
 }
@@ -513,6 +671,9 @@ function playLevel(index) {
     removed: false,
   }));
   state.hearts = MAX_HEARTS;
+  state.history = [];
+  state.moveCount = 0;
+  state.levelStart = performance.now();
 
   el.dailyTitle.classList.add("hidden");
   el.levelTitle.classList.remove("hidden");
@@ -528,6 +689,8 @@ function playLevel(index) {
   renderHearts();
   computeGeometry();
   renderBoard();
+  updateUndoButton();
+  maybeShowTutorial();
 }
 
 function renderHearts() {
@@ -784,7 +947,8 @@ function buildGrid() {
 function buildArrowEl(arrow) {
   const g = state.geom;
   const group = document.createElementNS(SVG_NS, "g");
-  group.setAttribute("class", "arrow-group");
+  group.setAttribute("class", "arrow-group dir-" + arrow.dir);
+  arrow.el = group;
 
   const pts = arrow.cells.map(([r, c]) => cellToXY(r, c));
   const head = pts[pts.length - 1];
@@ -992,12 +1156,60 @@ function handleClick(arrow, group) {
   }
 
   arrow.removed = true;
-  playTone(520, 0.08);
+  state.history.push(arrow);
+  state.moveCount += 1;
+  updateUndoButton();
+  playWhoosh();
+  vibrate(12);
+  group.classList.remove("hint");
   group.classList.add("leaving");
   animateLeave(arrow, group, () => {
     group.remove();
     if (state.arrows.every((a) => a.removed)) onWin();
   });
+}
+
+// ---------- Undo & hint ----------
+
+function updateUndoButton() {
+  el.btnUndo.disabled = state.history.length === 0;
+}
+
+// Bring back the most recently removed cord. Cheap and forgiving — it only
+// reverses successful removals, so the board stays consistent.
+function undoMove() {
+  if (!state.history.length) return;
+  const arrow = state.history.pop();
+  arrow.removed = false;
+  state.moveCount = Math.max(0, state.moveCount - 1);
+
+  const groupEl = buildArrowEl(arrow);
+  groupEl.classList.add("enter");
+  groupEl.addEventListener("animationend", function done() {
+    groupEl.classList.remove("enter");
+    groupEl.removeEventListener("animationend", done);
+  });
+  el.board.appendChild(groupEl);
+
+  updateUndoButton();
+  playTone(440, 0.06);
+  vibrate(15);
+  el.btnUndo.classList.add("flash");
+  setTimeout(() => el.btnUndo.classList.remove("flash"), 400);
+}
+
+// Pulse a cord that can be safely removed right now, to nudge a stuck player.
+function showHint() {
+  const candidates = state.arrows.filter((a) => !a.removed && a.el && isRemovable(a));
+  if (!candidates.length) return;
+  const arrow = candidates[Math.floor(Math.random() * candidates.length)];
+  const groupEl = arrow.el;
+  el.board.appendChild(groupEl); // raise above neighbours so the glow shows
+  groupEl.classList.add("hint");
+  setTimeout(() => groupEl.classList.remove("hint"), 2100);
+  playTone(620, 0.07);
+  el.btnHint.classList.add("flash");
+  setTimeout(() => el.btnHint.classList.remove("flash"), 400);
 }
 
 function loseHeart() {
@@ -1031,8 +1243,24 @@ function onWin() {
     state.stars[state.level] = earned;
     saveStars();
   }
+
+  // Record best time / fewest moves for this level.
+  const timeMs = performance.now() - state.levelStart;
+  const moves = state.moveCount;
+  const prev = state.records[state.level];
+  const newTimeBest = !prev || timeMs < prev.timeMs;
+  state.records[state.level] = {
+    timeMs: prev ? Math.min(prev.timeMs, timeMs) : timeMs,
+    moves: prev ? Math.min(prev.moves, moves) : moves,
+  };
+  saveRecords();
+
   el.winTitle.textContent = "Seviye Tamamlandı!";
   el.winStats.textContent = `${cleared}. seviyeden kaçtın.`;
+  el.winRecordTime.textContent = "⏱ " + formatClock(timeMs);
+  el.winRecordTime.classList.toggle("best", newTimeBest && !!prev);
+  el.winRecordMoves.textContent = "👆 " + moves + " hamle";
+  el.winRecords.classList.remove("hidden");
   el.winDailyInfo.classList.add("hidden");
   el.btnNext.textContent = "Devam";
   showWinStars(earned);
@@ -1041,6 +1269,7 @@ function onWin() {
     saveProgress();
   }
   playWinChime();
+  launchConfetti();
   el.winOverlay.classList.remove("hidden");
 }
 
@@ -1068,6 +1297,7 @@ function onDailyWin() {
   saveDailyRecord(record);
 
   el.winStars.classList.add("hidden");
+  el.winRecords.classList.add("hidden");
   el.winTitle.textContent = "Günlük Görev Tamamlandı!";
   el.winStats.textContent = `Süre: ${formatClock(timeMs)} • Kalan can: ${heartsLeft}`;
   el.winDailyScore.textContent = isBest
@@ -1077,12 +1307,84 @@ function onDailyWin() {
   el.winDailyInfo.classList.remove("hidden");
   el.btnNext.textContent = "Tamam";
   playWinChime();
+  launchConfetti();
   el.winOverlay.classList.remove("hidden");
 }
+
+// ---------- Tutorial ----------
+
+const TUTORIAL_STEPS = [
+  {
+    emoji: "🪢",
+    title: "Knot Escape",
+    text: "Tahta birbirine dolanmış iplerle dolu. Hepsini çözüp tahtayı tamamen boşaltmalısın.",
+  },
+  {
+    emoji: "👆",
+    title: "İpe Dokun",
+    text: "Bir ipin oku, önündeki yol boşsa o yöne doğru kayıp gider. İpin herhangi bir yerine dokunabilirsin.",
+  },
+  {
+    emoji: "🚫",
+    title: "Sıraya Dikkat",
+    text: "Önü başka iplerle kapalı bir ipe dokunursan bir can kaybedersin. Doğru çözüm sırasını bulmaya çalış!",
+  },
+  {
+    emoji: "💡",
+    title: "Yardımcıların Var",
+    text: "Sıkışırsan İpucu güvenli bir hamleyi parlatır, Geri Al ise son hamleni geri alır.",
+  },
+];
+
+let tutorialStep = 0;
+
+function renderTutorialStep() {
+  const s = TUTORIAL_STEPS[tutorialStep];
+  el.tutorialEmoji.textContent = s.emoji;
+  el.tutorialTitle.textContent = s.title;
+  el.tutorialText.textContent = s.text;
+  el.tutorialDots.innerHTML = "";
+  TUTORIAL_STEPS.forEach((_, i) => {
+    const dot = document.createElement("span");
+    dot.className = "dot" + (i === tutorialStep ? " active" : "");
+    el.tutorialDots.appendChild(dot);
+  });
+  el.btnTutorialNext.textContent =
+    tutorialStep === TUTORIAL_STEPS.length - 1 ? "Başla" : "Devam";
+}
+
+function showTutorial() {
+  tutorialStep = 0;
+  renderTutorialStep();
+  el.tutorialOverlay.classList.remove("hidden");
+}
+
+function closeTutorial() {
+  el.tutorialOverlay.classList.add("hidden");
+  localStorage.setItem(TUTORIAL_KEY, "1");
+}
+
+function maybeShowTutorial() {
+  if (localStorage.getItem(TUTORIAL_KEY)) return;
+  showTutorial();
+}
+
+el.btnTutorialNext.addEventListener("click", () => {
+  playClick();
+  if (tutorialStep < TUTORIAL_STEPS.length - 1) {
+    tutorialStep += 1;
+    renderTutorialStep();
+  } else {
+    closeTutorial();
+    // Point out a first safe move so the player gets going.
+    setTimeout(showHint, 400);
+  }
+});
 
 loadProgress();
 loadSettings();
 loadStars();
+loadRecords();
 applySettings();
 renderCollection();
 renderAchievements();

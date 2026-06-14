@@ -59,8 +59,15 @@
           <span class="settings-label">Karanlık Mod</span>
           <button class="toggle" id="toggle-dark" role="switch" aria-checked="false"><span class="toggle-knob"></span></button>
         </div>
+        <div class="settings-row">
+          <span class="settings-label">Renkli Oklar</span>
+          <button class="toggle on" id="toggle-colors" role="switch" aria-checked="true"><span class="toggle-knob"></span></button>
+        </div>
       </div>
       <div class="settings-list">
+        <button class="settings-row settings-action" id="btn-how-to-play">
+          <span class="settings-label">Nasıl Oynanır</span>
+        </button>
         <button class="settings-row settings-action" id="btn-reset-progress">
           <span class="settings-label">İlerlemeyi Sıfırla</span>
         </button>
@@ -110,7 +117,16 @@
         <svg id="board" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
       </div>
 
-      <footer class="game-footer"></footer>
+      <footer class="game-footer">
+        <button id="btn-undo" class="footer-btn" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7 4 12l5 5" /><path d="M4 12h9a6 6 0 0 1 0 12h-2" /></svg>
+          <span>Geri Al</span>
+        </button>
+        <button id="btn-hint" class="footer-btn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-3.8 10.6c.6.5.8 1 .8 1.9v.5h6v-.5c0-.9.2-1.4.8-1.9A6 6 0 0 0 12 3z" /><path d="M9.5 20h5M10 22h4" /></svg>
+          <span>İpucu</span>
+        </button>
+      </footer>
     </section>
 
     <!-- Win overlay -->
@@ -124,6 +140,10 @@
           <span class="star" data-i="2">★</span>
         </div>
         <p id="win-stats"></p>
+        <div id="win-records" class="win-records hidden">
+          <span class="win-record-item" id="win-record-time"></span>
+          <span class="win-record-item" id="win-record-moves"></span>
+        </div>
         <div id="win-daily-info" class="win-daily-info hidden">
           <p class="win-daily-score" id="win-daily-score"></p>
           <p class="win-daily-next" id="win-daily-next"></p>
@@ -139,6 +159,17 @@
         <h2>Canların Bitti</h2>
         <p>Bir nefes al ve tekrar dene.</p>
         <button id="btn-retry" class="play-btn">Tekrar Dene</button>
+      </div>
+    </div>
+
+    <!-- How-to-play tutorial -->
+    <div id="tutorial-overlay" class="overlay hidden">
+      <div class="overlay-card tutorial-card">
+        <div class="tutorial-emoji" id="tutorial-emoji">🪢</div>
+        <h2 id="tutorial-title">Nasıl Oynanır</h2>
+        <p id="tutorial-text"></p>
+        <div class="tutorial-dots" id="tutorial-dots"></div>
+        <button id="btn-tutorial-next" class="play-btn">Devam</button>
       </div>
     </div>
 
