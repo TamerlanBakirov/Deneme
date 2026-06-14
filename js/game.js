@@ -345,7 +345,7 @@ function buildArrowEl(arrow) {
 
   const strokeW = g.cell * 0.16;
   const linePts = pts.slice(0, -1).concat([base]);
-  if (pts.length === 1) linePts[0] = headBack;
+  if (pts.length === 1) linePts.unshift(headBack);
 
   const poly = document.createElementNS(SVG_NS, "polyline");
   poly.setAttribute("class", "arrow-stroke");
@@ -465,6 +465,7 @@ function animateLeave(arrow, group, onDone) {
   const headArc = cum[n - 1];
   // Polyline runs from the tail up to the arrowhead base.
   const bodyArcs = [];
+  if (n === 1) bodyArcs.push(tailArc);
   for (let i = 0; i < n - 1; i++) bodyArcs.push(cum[i]);
   bodyArcs.push(headArc - cell * 0.16);
   const baseArc = headArc - cell * 0.16;
