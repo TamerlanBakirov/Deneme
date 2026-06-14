@@ -39,6 +39,8 @@
     <section id="collection-screen" class="screen tab-screen hidden">
       <div class="tab-header"><h2>Seviyeler</h2></div>
       <div class="level-grid" id="level-grid"></div>
+      <div class="tab-header"><h2>Başarımlar</h2></div>
+      <div class="achv-grid" id="achv-grid"></div>
     </section>
 
     <!-- Settings -->
@@ -116,6 +118,11 @@
       <div class="overlay-card">
         <div class="overlay-tri" aria-hidden="true"></div>
         <h2 id="win-title">Seviye Tamamlandı!</h2>
+        <div id="win-stars" class="star-row hidden">
+          <span class="star" data-i="0">★</span>
+          <span class="star" data-i="1">★</span>
+          <span class="star" data-i="2">★</span>
+        </div>
         <p id="win-stats"></p>
         <div id="win-daily-info" class="win-daily-info hidden">
           <p class="win-daily-score" id="win-daily-score"></p>

@@ -12,6 +12,7 @@ const TAIL_OFFSET = 0.36;
 const STORAGE_KEY = "knot-escape-progress";
 const DAILY_KEY = "knot-escape-daily";
 const SETTINGS_KEY = "knot-escape-settings";
+const STARS_KEY = "knot-escape-stars";
 const DAILY_CONFIG = { rows: 8, cols: 8, fillTarget: 0.68, maxLen: 5 };
 
 const state = {
@@ -26,6 +27,7 @@ const state = {
   tab: "home", // "home" | "challenge" | "collection" | "settings"
   returnTab: "home",
   settings: { sound: true, vibration: true, dark: false },
+  stars: new Array(LEVELS.length).fill(0), // best star rating (0-3) per level
 };
 
 const el = {
@@ -55,6 +57,8 @@ const el = {
   bottomNav: document.getElementById("bottom-nav"),
   navBtns: document.querySelectorAll(".nav-btn"),
   levelGrid: document.getElementById("level-grid"),
+  achvGrid: document.getElementById("achv-grid"),
+  winStars: document.getElementById("win-stars"),
   app: document.querySelector(".app"),
   toggleSound: document.getElementById("toggle-sound"),
   toggleVibration: document.getElementById("toggle-vibration"),
@@ -109,9 +113,12 @@ el.toggleDark.addEventListener("click", () => {
 el.btnResetProgress.addEventListener("click", () => {
   if (!confirm("Tüm seviye ilerlemen sıfırlanacak. Emin misin?")) return;
   state.level = 0;
+  state.stars.fill(0);
   saveProgress();
+  saveStars();
   el.splashNum.textContent = "1";
   renderCollection();
+  renderAchievements();
 });
 
 function loadProgress() {
@@ -121,6 +128,92 @@ function loadProgress() {
 
 function saveProgress() {
   localStorage.setItem(STORAGE_KEY, String(state.level));
+}
+
+// ---------- Stars & achievements ----------
+
+function loadStars() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STARS_KEY));
+    if (Array.isArray(raw)) {
+      for (let i = 0; i < state.stars.length && i < raw.length; i++) {
+        state.stars[i] = raw[i] | 0;
+      }
+    }
+  } catch (e) {
+    // ignore malformed storage
+  }
+}
+
+function saveStars() {
+  localStorage.setItem(STARS_KEY, JSON.stringify(state.stars));
+}
+
+// Star rating for a finished level, based on hearts left at the end.
+function starsForHearts(hearts) {
+  if (hearts >= MAX_HEARTS) return 3;
+  if (hearts >= 3) return 2;
+  return 1;
+}
+
+const ACHIEVEMENTS = [
+  {
+    id: "first-knot",
+    title: "İlk Düğüm",
+    desc: "İlk seviyeyi tamamla",
+    check: (s) => s.level >= 1 || s.stars[0] > 0,
+  },
+  {
+    id: "level-10",
+    title: "On Seviye",
+    desc: "11. seviyeye ulaş",
+    check: (s) => s.level >= 10,
+  },
+  {
+    id: "level-25",
+    title: "Çeyrek Yol",
+    desc: "26. seviyeye ulaş",
+    check: (s) => s.level >= 25,
+  },
+  {
+    id: "all-levels",
+    title: "Knot Ustası",
+    desc: "Tüm seviyeleri tamamla",
+    check: (s) => s.stars[LEVELS.length - 1] > 0,
+  },
+  {
+    id: "perfect",
+    title: "Mükemmel Çözüm",
+    desc: "Bir seviyeyi cansız kayıp yapmadan bitir",
+    check: (s) => s.stars.some((v) => v === 3),
+  },
+  {
+    id: "star-collector",
+    title: "Yıldız Koleksiyoncusu",
+    desc: "10 seviyede 3 yıldız kazan",
+    check: (s) => s.stars.filter((v) => v === 3).length >= 10,
+  },
+  {
+    id: "daily-explorer",
+    title: "Günlük Kaşif",
+    desc: "Bir günlük görevi tamamla",
+    check: () => !!loadDailyRecord(),
+  },
+];
+
+function renderAchievements() {
+  el.achvGrid.innerHTML = "";
+  for (const a of ACHIEVEMENTS) {
+    const unlocked = a.check(state);
+    const card = document.createElement("div");
+    card.className = "achv-card" + (unlocked ? " unlocked" : " locked");
+    card.innerHTML = `
+      <span class="achv-icon">${unlocked ? "🏆" : "🔒"}</span>
+      <span class="achv-title">${a.title}</span>
+      <span class="achv-desc">${a.desc}</span>
+    `;
+    el.achvGrid.appendChild(card);
+  }
 }
 
 // ---------- Settings ----------
@@ -329,7 +422,10 @@ function showTab(tab) {
 
   el.splashNum.textContent = String(state.level + 1);
   updateDailyCard();
-  if (tab === "collection") renderCollection();
+  if (tab === "collection") {
+    renderCollection();
+    renderAchievements();
+  }
 }
 
 function renderCollection() {
@@ -340,9 +436,26 @@ function renderCollection() {
     if (i < state.level) cell.classList.add("done");
     else if (i === state.level) cell.classList.add("current");
     else cell.classList.add("locked");
-    cell.textContent = String(i + 1);
     cell.disabled = i > state.level;
     if (i <= state.level) cell.addEventListener("click", () => playLevel(i));
+
+    const num = document.createElement("span");
+    num.className = "cell-num";
+    num.textContent = String(i + 1);
+    cell.appendChild(num);
+
+    if (state.stars[i] > 0) {
+      const starRow = document.createElement("span");
+      starRow.className = "cell-stars";
+      for (let s = 0; s < 3; s++) {
+        const star = document.createElement("span");
+        star.className = "star" + (s < state.stars[i] ? " filled" : "");
+        star.textContent = "★";
+        starRow.appendChild(star);
+      }
+      cell.appendChild(starRow);
+    }
+
     el.levelGrid.appendChild(cell);
   }
 }
@@ -699,16 +812,29 @@ function onWin() {
     return;
   }
   const cleared = state.level + 1;
+  const earned = starsForHearts(state.hearts);
+  if (earned > state.stars[state.level]) {
+    state.stars[state.level] = earned;
+    saveStars();
+  }
   el.winTitle.textContent = "Seviye Tamamlandı!";
   el.winStats.textContent = `${cleared}. seviyeden kaçtın.`;
   el.winDailyInfo.classList.add("hidden");
   el.btnNext.textContent = "Devam";
+  showWinStars(earned);
   if (state.level < LEVELS.length - 1) {
     state.level += 1;
     saveProgress();
   }
   playWinChime();
   el.winOverlay.classList.remove("hidden");
+}
+
+function showWinStars(earned) {
+  el.winStars.classList.remove("hidden");
+  el.winStars.querySelectorAll(".star").forEach((star, i) => {
+    star.classList.toggle("filled", i < earned);
+  });
 }
 
 function onDailyWin() {
@@ -727,6 +853,7 @@ function onDailyWin() {
     : prev;
   saveDailyRecord(record);
 
+  el.winStars.classList.add("hidden");
   el.winTitle.textContent = "Günlük Görev Tamamlandı!";
   el.winStats.textContent = `Süre: ${formatClock(timeMs)} • Kalan can: ${heartsLeft}`;
   el.winDailyScore.textContent = isBest
@@ -741,6 +868,8 @@ function onDailyWin() {
 
 loadProgress();
 loadSettings();
+loadStars();
 applySettings();
 renderCollection();
+renderAchievements();
 showTab("home");
