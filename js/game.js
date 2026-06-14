@@ -8,6 +8,7 @@ const DIRS = {
 const MAX_HEARTS = 5;
 const STORAGE_KEY = "knot-escape-progress";
 const DAILY_KEY = "knot-escape-daily";
+const SETTINGS_KEY = "knot-escape-settings";
 const DAILY_CONFIG = { rows: 8, cols: 8, fillTarget: 0.68, maxLen: 5 };
 
 const state = {
@@ -19,10 +20,16 @@ const state = {
   dailyStart: 0,
   gameClockInterval: null,
   dailyCountdownInterval: null,
+  tab: "home", // "home" | "challenge" | "collection" | "settings"
+  returnTab: "home",
+  settings: { sound: true, vibration: true, dark: false },
 };
 
 const el = {
-  splash: document.getElementById("splash-screen"),
+  home: document.getElementById("home-screen"),
+  challenge: document.getElementById("challenge-screen"),
+  collection: document.getElementById("collection-screen"),
+  settings: document.getElementById("settings-screen"),
   game: document.getElementById("game-screen"),
   splashNum: document.getElementById("splash-level-num"),
   gameNum: document.getElementById("game-level-num"),
@@ -42,10 +49,18 @@ const el = {
   btnDaily: document.getElementById("btn-daily"),
   dailyStatus: document.getElementById("daily-status"),
   dailyTimer: document.getElementById("daily-timer"),
+  bottomNav: document.getElementById("bottom-nav"),
+  navBtns: document.querySelectorAll(".nav-btn"),
+  levelGrid: document.getElementById("level-grid"),
+  app: document.querySelector(".app"),
+  toggleSound: document.getElementById("toggle-sound"),
+  toggleVibration: document.getElementById("toggle-vibration"),
+  toggleDark: document.getElementById("toggle-dark"),
+  btnResetProgress: document.getElementById("btn-reset-progress"),
 };
 
 document.getElementById("btn-play").addEventListener("click", () => playLevel(state.level));
-document.getElementById("btn-back").addEventListener("click", showSplash);
+document.getElementById("btn-back").addEventListener("click", () => showTab(state.returnTab));
 document.getElementById("btn-restart").addEventListener("click", () => {
   if (state.mode === "daily") startDaily();
   else playLevel(state.level);
@@ -55,7 +70,7 @@ el.btnNext.addEventListener("click", () => {
   if (state.mode !== "daily") {
     state.level = Math.min(state.level + 1, LEVELS.length - 1);
   }
-  showSplash();
+  showTab(state.returnTab);
 });
 document.getElementById("btn-retry").addEventListener("click", () => {
   el.loseOverlay.classList.add("hidden");
@@ -64,6 +79,38 @@ document.getElementById("btn-retry").addEventListener("click", () => {
 });
 el.btnDaily.addEventListener("click", startDaily);
 
+el.navBtns.forEach((btn) => {
+  btn.addEventListener("click", () => showTab(btn.dataset.tab));
+});
+
+el.toggleSound.addEventListener("click", () => {
+  state.settings.sound = !state.settings.sound;
+  saveSettings();
+  applySettings();
+  playTone(state.settings.sound ? 720 : 320, 0.08);
+});
+
+el.toggleVibration.addEventListener("click", () => {
+  state.settings.vibration = !state.settings.vibration;
+  saveSettings();
+  applySettings();
+  vibrate(20);
+});
+
+el.toggleDark.addEventListener("click", () => {
+  state.settings.dark = !state.settings.dark;
+  saveSettings();
+  applySettings();
+});
+
+el.btnResetProgress.addEventListener("click", () => {
+  if (!confirm("Tüm seviye ilerlemen sıfırlanacak. Emin misin?")) return;
+  state.level = 0;
+  saveProgress();
+  el.splashNum.textContent = "1";
+  renderCollection();
+});
+
 function loadProgress() {
   const saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
   if (!isNaN(saved) && saved >= 0 && saved < LEVELS.length) state.level = saved;
@@ -71,6 +118,66 @@ function loadProgress() {
 
 function saveProgress() {
   localStorage.setItem(STORAGE_KEY, String(state.level));
+}
+
+// ---------- Settings ----------
+
+function loadSettings() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    if (raw && typeof raw === "object") Object.assign(state.settings, raw);
+  } catch (e) {
+    // ignore malformed storage
+  }
+}
+
+function saveSettings() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+}
+
+function applySettings() {
+  el.app.classList.toggle("dark", state.settings.dark);
+  el.toggleSound.classList.toggle("on", state.settings.sound);
+  el.toggleSound.setAttribute("aria-checked", String(state.settings.sound));
+  el.toggleVibration.classList.toggle("on", state.settings.vibration);
+  el.toggleVibration.setAttribute("aria-checked", String(state.settings.vibration));
+  el.toggleDark.classList.toggle("on", state.settings.dark);
+  el.toggleDark.setAttribute("aria-checked", String(state.settings.dark));
+}
+
+// ---------- Sound & haptics ----------
+
+let audioCtx = null;
+
+function playTone(freq, duration, type) {
+  if (!state.settings.sound) return;
+  if (!audioCtx) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    audioCtx = new AudioCtx();
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.value = freq;
+  gain.gain.value = 0.12;
+  osc.connect(gain).connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.start(now);
+  osc.stop(now + duration);
+}
+
+function vibrate(pattern) {
+  if (!state.settings.vibration) return;
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function playWinChime() {
+  playTone(660, 0.12);
+  setTimeout(() => playTone(880, 0.18), 110);
 }
 
 // ---------- Daily challenge helpers ----------
@@ -173,7 +280,8 @@ function startDaily() {
   el.dailyClock.classList.remove("hidden");
   el.dailyClock.textContent = "0:00.0";
 
-  el.splash.classList.add("hidden");
+  state.returnTab = state.tab;
+  hideTabScreens();
   el.winOverlay.classList.add("hidden");
   el.loseOverlay.classList.add("hidden");
   el.game.classList.remove("hidden");
@@ -189,18 +297,51 @@ function startDaily() {
 
 // ---------- Screens ----------
 
-function showSplash() {
+function hideTabScreens() {
+  el.home.classList.add("hidden");
+  el.challenge.classList.add("hidden");
+  el.collection.classList.add("hidden");
+  el.settings.classList.add("hidden");
+  el.bottomNav.classList.add("hidden");
+}
+
+function showTab(tab) {
   if (state.gameClockInterval) {
     clearInterval(state.gameClockInterval);
     state.gameClockInterval = null;
   }
+  state.tab = tab;
   el.dailyClock.classList.add("hidden");
-  el.splashNum.textContent = String(state.level + 1);
   el.game.classList.add("hidden");
   el.winOverlay.classList.add("hidden");
   el.loseOverlay.classList.add("hidden");
-  el.splash.classList.remove("hidden");
+  el.bottomNav.classList.remove("hidden");
+
+  el.home.classList.toggle("hidden", tab !== "home");
+  el.challenge.classList.toggle("hidden", tab !== "challenge");
+  el.collection.classList.toggle("hidden", tab !== "collection");
+  el.settings.classList.toggle("hidden", tab !== "settings");
+
+  el.navBtns.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
+
+  el.splashNum.textContent = String(state.level + 1);
   updateDailyCard();
+  if (tab === "collection") renderCollection();
+}
+
+function renderCollection() {
+  el.levelGrid.innerHTML = "";
+  for (let i = 0; i < LEVELS.length; i++) {
+    const cell = document.createElement("button");
+    cell.className = "level-cell";
+    if (i < state.level) cell.classList.add("done");
+    else if (i === state.level) cell.classList.add("current");
+    else cell.classList.add("locked");
+    cell.textContent = String(i + 1);
+    cell.disabled = i > state.level;
+    if (i <= state.level) cell.addEventListener("click", () => playLevel(i));
+    el.levelGrid.appendChild(cell);
+  }
 }
 
 function playLevel(index) {
@@ -224,7 +365,8 @@ function playLevel(index) {
   el.dailyClock.classList.add("hidden");
   el.gameNum.textContent = String(index + 1);
 
-  el.splash.classList.add("hidden");
+  state.returnTab = state.tab;
+  hideTabScreens();
   el.winOverlay.classList.add("hidden");
   el.loseOverlay.classList.add("hidden");
   el.game.classList.remove("hidden");
@@ -507,12 +649,15 @@ function handleClick(arrow, group) {
 
   if (!isRemovable(arrow)) {
     loseHeart();
+    playTone(180, 0.15, "square");
+    vibrate(60);
     group.classList.add("blocked");
     setTimeout(() => group.classList.remove("blocked"), 380);
     return;
   }
 
   arrow.removed = true;
+  playTone(520, 0.08);
   group.classList.add("leaving");
   animateLeave(arrow, group, () => {
     group.remove();
@@ -554,6 +699,7 @@ function onWin() {
     state.level += 1;
     saveProgress();
   }
+  playWinChime();
   el.winOverlay.classList.remove("hidden");
 }
 
@@ -581,8 +727,12 @@ function onDailyWin() {
   el.winDailyNext.textContent = `Yeni görev ${formatHMS(msUntilNextMidnight())} sonra`;
   el.winDailyInfo.classList.remove("hidden");
   el.btnNext.textContent = "Tamam";
+  playWinChime();
   el.winOverlay.classList.remove("hidden");
 }
 
 loadProgress();
-showSplash();
+loadSettings();
+applySettings();
+renderCollection();
+showTab("home");

@@ -18,6 +18,20 @@
   --heart-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s-7.5-4.6-10-9.1C-0.2 7.7 2 4 5.5 4 7.8 4 9.4 5.3 12 8c2.6-2.7 4.2-4 6.5-4C22 4 24.2 7.7 22 11.9 19.5 16.4 12 21 12 21z'/%3E%3C/svg%3E");
 }
 
+.app.dark {
+  --bg: #1d1d26;
+  --ink: #f1efe9;
+  --accent-soft: #233a3a;
+  --rope: #e0996a;
+  --rope-deep: #f0b78c;
+  --heart-empty: #3a3a47;
+  --divider: #32323f;
+  --panel: #2a2a35;
+  --board-panel: #26262f;
+  --grid-dot: #3a3a47;
+  --muted: #8b8a99;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -123,11 +137,26 @@ body {
   line-height: 1;
 }
 
-/* ---------- Splash ---------- */
-#splash-screen {
+/* ---------- Home / tab screens ---------- */
+#home-screen {
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px 56px;
+  padding: 0 28px 24px;
+}
+
+.tab-screen {
+  padding: 0 24px 16px;
+}
+
+.tab-header {
+  padding: 22px 0 6px;
+  text-align: center;
+}
+
+.tab-header h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent-deep);
 }
 
 .splash-center {
@@ -152,18 +181,20 @@ body {
   background: var(--panel);
   border: 1px solid #efe6d8;
   border-radius: 22px;
-  padding: 16px 18px;
+  padding: 20px 18px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
   margin-top: 10px;
   box-shadow: 0 6px 18px rgba(43, 179, 163, 0.10);
+  text-align: center;
 }
 
 .daily-card-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .daily-badge {
@@ -178,7 +209,7 @@ body {
 }
 
 .daily-timer {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--accent-deep);
   font-variant-numeric: tabular-nums;
@@ -189,6 +220,162 @@ body {
   color: var(--muted);
   line-height: 1.4;
   margin-bottom: 0;
+}
+
+/* ---------- Bottom navigation ---------- */
+.bottom-nav {
+  display: flex;
+  border-top: 1px solid var(--divider);
+  background: var(--bg);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 0 8px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.nav-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-btn.active {
+  color: var(--accent-deep);
+}
+
+.nav-btn:active {
+  transform: scale(0.94);
+}
+
+/* ---------- Level collection grid ---------- */
+.level-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  align-content: start;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.level-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  background: var(--panel);
+  color: var(--ink);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease-out);
+}
+
+.level-cell:active {
+  transform: scale(0.93);
+}
+
+.level-cell.done {
+  background: var(--accent);
+  color: #fff;
+}
+
+.level-cell.current {
+  background: var(--accent-soft);
+  color: var(--accent-deep);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.level-cell.locked {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- Settings ---------- */
+.settings-list {
+  background: var(--panel);
+  border-radius: 18px;
+  margin: 14px 0;
+  overflow: hidden;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 18px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--divider);
+}
+
+.settings-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.settings-action .settings-label {
+  color: var(--heart);
+}
+
+.toggle {
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--heart-empty);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s var(--ease-spring);
+}
+
+.toggle.on {
+  background: var(--accent);
+}
+
+.toggle.on .toggle-knob {
+  transform: translateX(18px);
 }
 
 /* ---------- Buttons ---------- */
