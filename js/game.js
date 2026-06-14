@@ -13,7 +13,7 @@ const STORAGE_KEY = "knot-escape-progress";
 const DAILY_KEY = "knot-escape-daily";
 const SETTINGS_KEY = "knot-escape-settings";
 const STARS_KEY = "knot-escape-stars";
-const DAILY_CONFIG = { rows: 8, cols: 8, fillTarget: 0.68, maxLen: 5 };
+const DAILY_CONFIG = { rows: 8, cols: 8, fillTarget: 0.68, maxLen: 6, minLen: 2 };
 
 const state = {
   level: 0,
@@ -335,8 +335,8 @@ function hashSeed(str) {
 
 function getDailyLevel() {
   const seed = hashSeed(`knot-daily-${dateKey()}`);
-  const { rows, cols, fillTarget, maxLen } = DAILY_CONFIG;
-  return LevelGenerator.generateLevel(rows, cols, fillTarget, maxLen, seed);
+  const { rows, cols, fillTarget, maxLen, minLen } = DAILY_CONFIG;
+  return LevelGenerator.generateLevel(rows, cols, fillTarget, maxLen, seed, minLen);
 }
 
 function loadDailyRecord() {
@@ -806,6 +806,16 @@ function buildArrowEl(arrow) {
   const linePts = pts.slice(0, -1).concat([base]);
   if (pts.length === 1) linePts.unshift(headBack);
 
+  // Wide, invisible hit area running the whole length of the cord (tail to the
+  // arrow tip) so a tap anywhere along the rope — not just on the arrowhead —
+  // selects it. Added first so it sits behind the visible parts.
+  const hitPts = pts.length > 1 ? pts.concat([tip]) : [headBack, tip];
+  const hit = document.createElementNS(SVG_NS, "polyline");
+  hit.setAttribute("class", "arrow-hit");
+  hit.setAttribute("points", hitPts.map((p) => `${p.x},${p.y}`).join(" "));
+  hit.setAttribute("stroke-width", String(g.cell * 0.72));
+  group.appendChild(hit);
+
   const poly = document.createElementNS(SVG_NS, "polyline");
   poly.setAttribute("class", "arrow-stroke");
   poly.setAttribute("points", linePts.map((p) => `${p.x},${p.y}`).join(" "));
@@ -864,101 +874,57 @@ function isRemovable(arrow) {
   return true;
 }
 
-// Drive the arrow off the board like a train leaving the station. The whole
-// arrow — body, head and arrowhead — rides one shared path: its own bent shape
-// (tail → head) extended straight off the board in the travel direction. Every
-// vertex advances the same arc-length each frame, so the shape stays rigid (no
-// stretching) while each body segment faithfully tracks the bends ahead of it.
-// Because the head's lane is already clear, the train never touches another
-// arrow.
+// Slide the whole arrow off the board in its travel direction as one rigid
+// piece, fading out as it goes. The head's lane is already clear, and keeping
+// the shape rigid (a plain translate) makes the motion perfectly smooth — no
+// bending or creasing around its own corners. Driven by the Web Animations API
+// so the browser composites it on its own thread.
 function animateLeave(arrow, group, onDone) {
   const g = state.geom;
-  const cell = g.cell;
   const { dr, dc } = DIRS[arrow.dir];
-  const dir = { x: dc, y: dr };
-  const perp = { x: -dr, y: dc };
+  const exitDist = Math.max(g.width, g.height) * 1.25;
+  const tx = dc * exitDist;
+  const ty = dr * exitDist;
+  const n = arrow.cells.length;
+  const duration = Math.min(620, 380 + n * 24);
 
-  const pts = arrow.cells.map(([r, c]) => cellToXY(r, c));
-  const n = pts.length;
-  const head = pts[n - 1];
-  const exitDist = Math.max(g.width, g.height) * 1.3;
-  const exitPoint = { x: head.x + dir.x * exitDist, y: head.y + dir.y * exitDist };
-  const waypoints = pts.concat([exitPoint]);
+  const finish = once(onDone);
 
-  // Cumulative arc length along the shared path.
-  const seg = [];
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    const a = waypoints[i], b = waypoints[i + 1];
-    seg.push(Math.hypot(b.x - a.x, b.y - a.y) || 1);
-  }
-  const cum = [0];
-  for (let i = 0; i < seg.length; i++) cum.push(cum[i] + seg[i]);
-  const totalArc = cum[cum.length - 1];
-
-  // Position of a point at arc-length s, extrapolating past either end.
-  function at(s) {
-    if (s <= 0) {
-      const a = waypoints[0], b = waypoints[1];
-      const ux = (b.x - a.x) / seg[0], uy = (b.y - a.y) / seg[0];
-      return { x: a.x + ux * s, y: a.y + uy * s };
-    }
-    for (let i = 0; i < seg.length; i++) {
-      if (s <= cum[i + 1] || i === seg.length - 1) {
-        const t = (s - cum[i]) / seg[i];
-        const a = waypoints[i], b = waypoints[i + 1];
-        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
-      }
-    }
-    return waypoints[waypoints.length - 1];
+  if (typeof group.animate === "function") {
+    const anim = group.animate(
+      [
+        { transform: "translate(0px, 0px)", opacity: 1, offset: 0 },
+        { opacity: 1, offset: 0.5 },
+        { transform: `translate(${tx}px, ${ty}px)`, opacity: 0, offset: 1 },
+      ],
+      { duration, easing: "cubic-bezier(0.36, 0, 0.66, 1)", fill: "forwards" }
+    );
+    anim.onfinish = finish;
+    anim.oncancel = finish;
+    return;
   }
 
-  const poly = group.querySelector(".arrow-stroke");
-  const tri = group.querySelector(".arrow-head");
-  const knot = group.querySelector(".arrow-knot");
-  const hw = cell * 0.24;
-
-  // The tail knot sits at the rope's starting point; for a single-cell arrow
-  // that's a short way behind the head, off the front of the shared path.
-  const tailArc = n > 1 ? 0 : -cell * TAIL_OFFSET;
-
-  const headArc = cum[n - 1];
-  // Polyline runs from the tail up to the arrowhead base.
-  const bodyArcs = [];
-  if (n === 1) bodyArcs.push(tailArc);
-  for (let i = 0; i < n - 1; i++) bodyArcs.push(cum[i]);
-  bodyArcs.push(headArc - cell * 0.16);
-  const baseArc = headArc - cell * 0.16;
-  const tipArc = headArc + cell * 0.36;
-
-  const duration = Math.min(640, 360 + (n - 1) * 45);
+  // Fallback for environments without the Web Animations API.
   const start = performance.now();
-
   function frame(now) {
     const t = Math.min(1, (now - start) / duration);
-    // Start moving immediately, then accelerate away.
-    const eased = 0.2 * t + 0.8 * t * t;
-    const d = totalArc * eased;
-
-    const linePts = bodyArcs.map((s) => at(s + d));
-    poly.setAttribute("points", linePts.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" "));
-
-    const c = at(baseArc + d);
-    const tp = at(tipArc + d);
-    const p2 = { x: c.x + perp.x * hw, y: c.y + perp.y * hw };
-    const p3 = { x: c.x - perp.x * hw, y: c.y - perp.y * hw };
-    tri.setAttribute("points",
-      `${tp.x.toFixed(2)},${tp.y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)} ${p3.x.toFixed(2)},${p3.y.toFixed(2)}`);
-
-    const tailPt = at(tailArc + d);
-    knot.setAttribute("cx", tailPt.x.toFixed(2));
-    knot.setAttribute("cy", tailPt.y.toFixed(2));
-
-    group.style.opacity = t < 0.78 ? "1" : String(Math.max(0, 1 - (t - 0.78) / 0.22));
-
+    const eased = t * t;
+    group.setAttribute("transform", `translate(${(tx * eased).toFixed(2)} ${(ty * eased).toFixed(2)})`);
+    group.style.opacity = t < 0.5 ? "1" : String(Math.max(0, 1 - (t - 0.5) / 0.5));
     if (t < 1) requestAnimationFrame(frame);
-    else onDone();
+    else finish();
   }
   requestAnimationFrame(frame);
+}
+
+// Wrap a callback so it can only ever fire once.
+function once(fn) {
+  let called = false;
+  return () => {
+    if (called) return;
+    called = true;
+    fn();
+  };
 }
 
 function handleClick(arrow, group) {

@@ -56,59 +56,82 @@
     return true;
   }
 
+  // Build a fully-packed, always-solvable board by *eroding* the grid in
+  // solution order. We start with every cell present and repeatedly carve off
+  // one arrow whose head has a clear "exit ray" — every cell between the head
+  // and the board edge (in the head's travel direction) is already carved away.
+  // Such an arrow is removable at that moment, so replaying the carves in
+  // reverse gives a valid puzzle. The cell with the smallest row among those
+  // still present always has an unobstructed upward ray, so a removable head
+  // always exists until the grid is empty — which means the board fills 100%.
+  //
+  // `fillTarget` is no longer needed (coverage is total) but is kept in the
+  // signature for the existing callers.
   function generateLevel(rows, cols, fillTarget, maxLen, seed, minLen) {
     minLen = Math.max(1, Math.min(minLen || 1, maxLen));
     const rand = makeRng(seed);
-    const occupied = new Map(); // "r,c" -> arrow index
-    const arrows = [];
-    const totalCells = rows * cols;
 
-    let attemptsLeft = totalCells * 120;
-    while (occupied.size / totalCells < fillTarget && attemptsLeft-- > 0) {
-      const hr = Math.floor(rand() * rows);
-      const hc = Math.floor(rand() * cols);
-      if (occupied.has(`${hr},${hc}`)) continue;
-      const head = { r: hr, c: hc };
+    const present = new Set();
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) present.add(`${r},${c}`);
+    }
 
-      // Pick a travel direction whose forward ray is currently clear. Prefer
-      // directions whose backward neighbour is also free, so the body has
-      // room to extend past a single cell (otherwise long cords degenerate
-      // into lots of length-1 cords).
-      const candidates = shuffle(DIR_NAMES, rand);
-      let dir = null;
-      for (const d of candidates) {
-        if (!rayClear(head, d, rows, cols, occupied)) continue;
-        const back = DIRS[OPPOSITE[d]];
-        const br = head.r + back.dr;
-        const bc = head.c + back.dc;
-        if (br >= 0 && br < rows && bc >= 0 && bc < cols && !occupied.has(`${br},${bc}`)) {
-          dir = d;
-          break;
+    // Is the ray from (r,c) in direction d clear of every still-present cell?
+    function exitRayClear(r, c, d) {
+      const { dr, dc } = DIRS[d];
+      let rr = r + dr;
+      let cc = c + dc;
+      while (rr >= 0 && rr < rows && cc >= 0 && cc < cols) {
+        if (present.has(`${rr},${cc}`)) return false;
+        rr += dr;
+        cc += dc;
+      }
+      return true;
+    }
+
+    // Find a present cell with a clear exit ray, plus that travel direction.
+    // Prefer a random cell/direction for variety; fall back to the guaranteed
+    // min-row-points-up choice so the loop can never stall.
+    function pickHead() {
+      const cells = [...present];
+      for (let t = 0; t < 24; t++) {
+        const k = cells[Math.floor(rand() * cells.length)];
+        const ci = k.indexOf(",");
+        const r = +k.slice(0, ci);
+        const c = +k.slice(ci + 1);
+        for (const d of shuffle(DIR_NAMES, rand)) {
+          if (exitRayClear(r, c, d)) return { r, c, dir: d };
         }
       }
-      if (!dir) {
-        for (const d of candidates) {
-          if (rayClear(head, d, rows, cols, occupied)) {
-            dir = d;
-            break;
-          }
-        }
+      let best = null;
+      for (const k of present) {
+        const ci = k.indexOf(",");
+        const r = +k.slice(0, ci);
+        if (!best || r < best.r) best = { r, c: +k.slice(ci + 1) };
       }
-      if (!dir) continue;
+      return { r: best.r, c: best.c, dir: "up" };
+    }
 
-      // Build the body backwards from the head. First step goes opposite the
-      // travel direction so the head clearly leads; later steps may turn but must
-      // never land on the forward ray.
-      const used = new Set([`${hr},${hc}`]);
-      const body = [head]; // tail .. head order is built by unshifting
-      const desiredLen = minLen + Math.floor(rand() * (maxLen - minLen + 1));
+    const removalOrder = [];
+    while (present.size > 0) {
+      const { r, c, dir } = pickHead();
+      const head = { r, c };
+      const targetLen = minLen + Math.floor(Math.sqrt(rand()) * (maxLen - minLen + 1));
 
+      // Grow the body backwards into adjacent present cells (first step leads
+      // away from the head so the head clearly points forward; later steps may
+      // wind, but never onto the head's own forward ray).
+      const used = new Set([`${r},${c}`]);
+      const body = [head];
       let cur = head;
+      let stepDir = OPPOSITE[dir]; // first step leads straight away from the head
       let firstStep = true;
-      while (body.length < desiredLen) {
+      while (body.length < targetLen) {
+        // Prefer continuing straight (momentum) so cords run long before
+        // turning, then fall back to a random turn.
         const dirsToTry = firstStep
-          ? [OPPOSITE[dir]]
-          : shuffle(DIR_NAMES, rand);
+          ? [stepDir]
+          : (rand() < 0.7 ? [stepDir, ...shuffle(DIR_NAMES, rand)] : shuffle(DIR_NAMES, rand));
         firstStep = false;
         let moved = false;
         for (const d of dirsToTry) {
@@ -116,23 +139,25 @@
           const nc = cur.c + DIRS[d].dc;
           const key = `${nr},${nc}`;
           if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-          if (occupied.has(key) || used.has(key)) continue;
+          if (!present.has(key) || used.has(key)) continue;
           if (onForwardRay(nr, nc, head, dir)) continue;
           const cell = { r: nr, c: nc };
           used.add(key);
           body.unshift(cell);
           cur = cell;
+          stepDir = d;
           moved = true;
           break;
         }
         if (!moved) break;
       }
 
-      const index = arrows.length;
-      for (const cell of body) occupied.set(`${cell.r},${cell.c}`, index);
-      arrows.push({ cells: body.map((c) => [c.r, c.c]), dir });
+      for (const cell of body) present.delete(`${cell.r},${cell.c}`);
+      removalOrder.push({ cells: body.map((cl) => [cl.r, cl.c]), dir });
     }
 
+    // Placement order is the reverse of removal order.
+    const arrows = removalOrder.reverse();
     validate(arrows);
     return { arrows };
   }

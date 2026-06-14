@@ -9,9 +9,12 @@ const { generateLevel } = require("../js/generator.js");
 const configs = [];
 for (let i = 0; i < 40; i++) {
   const size = 5 + i;
-  const fillTarget = Math.min(0.62 + i * 0.012, 0.96);
-  const maxLen = Math.min(5 + Math.floor(i / 2), 18);
-  const minLen = Math.min(2 + Math.floor(i / 3), 8);
+  // The cleanup pass fills almost everything regardless, so the fill target
+  // just controls how much of the board phase 1 packs with long cords before
+  // the gap-filling kicks in.
+  const fillTarget = Math.min(0.7 + i * 0.01, 0.95);
+  const maxLen = Math.min(6 + i, 24);
+  const minLen = Math.min(3 + Math.floor(i / 3), 10);
   configs.push({ rows: size, cols: size, fillTarget, maxLen, minLen });
 }
 

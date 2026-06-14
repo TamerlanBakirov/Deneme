@@ -650,11 +650,20 @@ body {
   100% { opacity: 1; transform: scale(1); }
 }
 
+.arrow-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: stroke;
+}
+
 .arrow-stroke {
   fill: none;
   stroke: var(--rope);
   stroke-linecap: round;
   stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .arrow-head {
