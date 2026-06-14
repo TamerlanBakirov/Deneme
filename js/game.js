@@ -874,35 +874,95 @@ function isRemovable(arrow) {
   return true;
 }
 
-// Slide the whole arrow off the board in its travel direction as one rigid
-// piece, fading out as it goes. The head's lane is already clear, and keeping
-// the shape rigid (a plain translate) makes the motion perfectly smooth — no
-// bending or creasing around its own corners.
-//
-// Driven by requestAnimationFrame and the SVG `transform` attribute rather
-// than the Web Animations API: animating the CSS `transform` property on SVG
-// elements is unreliable across browsers (especially with `transform-box:
-// fill-box`, used elsewhere for the press/enter effects), and a silent
-// failure there made the whole exit animation invisible. The `transform`
-// *attribute* and the `opacity` style are universally supported and don't
-// fight the existing CSS transitions/classes on `.arrow-group`.
+// Send the arrow off like a train pulling out: every part of the cord rides
+// forward along the cord's own track — its cells, then a straight extension
+// off the board in its travel direction (the lane its head already proved is
+// clear). Each point of the shape just advances along that track by the same
+// arc-length, so the rigid cord shape is preserved and it can never swing
+// across another cord's line.
 function animateLeave(arrow, group, onDone) {
   const g = state.geom;
   const { dr, dc } = DIRS[arrow.dir];
+
+  const cellPts = arrow.cells.map(([r, c]) => cellToXY(r, c));
+  const head = cellPts[cellPts.length - 1];
+  const headBack = cellPts.length > 1
+    ? cellPts[cellPts.length - 2]
+    : { x: head.x - dc * g.cell * TAIL_OFFSET, y: head.y - dr * g.cell * TAIL_OFFSET };
+  const bodyPts = cellPts.length > 1 ? cellPts : [headBack, head];
+  const n = bodyPts.length;
+
+  // Cumulative arc length along the cord, tail to head.
+  const cum = [0];
+  for (let i = 1; i < n; i++) {
+    cum.push(cum[i - 1] + Math.hypot(bodyPts[i].x - bodyPts[i - 1].x, bodyPts[i].y - bodyPts[i - 1].y));
+  }
+  const bodyLen = cum[n - 1];
   const exitDist = Math.max(g.width, g.height) * 1.25;
-  const tx = dc * exitDist;
-  const ty = dr * exitDist;
-  const n = arrow.cells.length;
-  const duration = Math.min(620, 380 + n * 24);
+  const extLen = bodyLen + exitDist;
+  const far = { x: head.x + dc * extLen, y: head.y + dr * extLen };
+  const track = bodyPts.concat([far]);
+  const trackCum = cum.concat([bodyLen + extLen]);
+  const totalLen = trackCum[trackCum.length - 1];
+  const maxShift = bodyLen + exitDist;
+
+  function pointAt(s) {
+    s = Math.max(0, Math.min(totalLen, s));
+    for (let i = 1; i < trackCum.length; i++) {
+      if (s <= trackCum[i] || i === trackCum.length - 1) {
+        const segLen = trackCum[i] - trackCum[i - 1];
+        const f = segLen > 0 ? (s - trackCum[i - 1]) / segLen : 0;
+        const a = track[i - 1], b = track[i];
+        return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+      }
+    }
+    return track[track.length - 1];
+  }
+
+  const hit = group.querySelector(".arrow-hit");
+  const stroke = group.querySelector(".arrow-stroke");
+  const knot = group.querySelector(".arrow-knot");
+  const tri = group.querySelector(".arrow-head");
+  const hw = g.cell * 0.24;
+  const tipLen = g.cell * 0.36;
+  const baseLen = g.cell * 0.16;
+  const EPS = Math.max(0.01, g.cell * 0.01);
 
   const finish = once(onDone);
   const start = performance.now();
+  const duration = Math.min(620, 380 + arrow.cells.length * 24);
 
   function frame(now) {
     const t = Math.min(1, (now - start) / duration);
-    const eased = t * t * t; // ease-in: slow start, accelerates off-board
-    group.setAttribute("transform", `translate(${(tx * eased).toFixed(2)} ${(ty * eased).toFixed(2)})`);
-    group.style.opacity = t < 0.45 ? "1" : String(Math.max(0, 1 - (t - 0.45) / 0.55));
+    const eased = t * t * t; // ease-in: slow start, picks up speed leaving
+    const shift = eased * maxShift;
+
+    const newPts = bodyPts.map((_, i) => pointAt(cum[i] + shift));
+    const newHead = newPts[n - 1];
+    const headArc = Math.min(cum[n - 1] + shift, totalLen);
+    const p1 = pointAt(Math.max(0, headArc - EPS));
+    const p2 = pointAt(Math.min(totalLen, headArc + EPS));
+    let tx = p2.x - p1.x, ty = p2.y - p1.y;
+    const tlen = Math.hypot(tx, ty) || 1;
+    tx /= tlen; ty /= tlen;
+
+    const tip = { x: newHead.x + tx * tipLen, y: newHead.y + ty * tipLen };
+    const base = { x: newHead.x - tx * baseLen, y: newHead.y - ty * baseLen };
+    const perp = { x: -ty, y: tx };
+
+    const linePts = newPts.slice(0, -1).concat([base]);
+    stroke.setAttribute("points", linePts.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" "));
+    hit.setAttribute("points", newPts.concat([tip]).map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" "));
+    knot.setAttribute("cx", newPts[0].x.toFixed(2));
+    knot.setAttribute("cy", newPts[0].y.toFixed(2));
+    tri.setAttribute("points", [
+      `${tip.x.toFixed(2)},${tip.y.toFixed(2)}`,
+      `${(base.x + perp.x * hw).toFixed(2)},${(base.y + perp.y * hw).toFixed(2)}`,
+      `${(base.x - perp.x * hw).toFixed(2)},${(base.y - perp.y * hw).toFixed(2)}`,
+    ].join(" "));
+
+    group.style.opacity = t < 0.55 ? "1" : String(Math.max(0, 1 - (t - 0.55) / 0.45));
+
     if (t < 1) requestAnimationFrame(frame);
     else finish();
   }
