@@ -6,6 +6,9 @@ const DIRS = {
   right: { dr: 0, dc: 1 },
 };
 const MAX_HEARTS = 5;
+// How far behind the head a single-cell cord's tail/knot sits, as a
+// fraction of the cell size. Kept small so it stays inside the cell.
+const TAIL_OFFSET = 0.36;
 const STORAGE_KEY = "knot-escape-progress";
 const DAILY_KEY = "knot-escape-daily";
 const SETTINGS_KEY = "knot-escape-settings";
@@ -477,7 +480,12 @@ function buildArrowEl(arrow) {
   const pts = arrow.cells.map(([r, c]) => cellToXY(r, c));
   const head = pts[pts.length - 1];
   const { dr, dc } = DIRS[arrow.dir];
-  const headBack = pts.length > 1 ? pts[pts.length - 2] : { x: head.x - dc * g.cell, y: head.y - dr * g.cell };
+  // For a single-cell cord the tail sits a short way behind the head, but
+  // must stay inside the cell's own footprint so it never overlaps a
+  // neighbouring cord's cell.
+  const headBack = pts.length > 1
+    ? pts[pts.length - 2]
+    : { x: head.x - dc * g.cell * TAIL_OFFSET, y: head.y - dr * g.cell * TAIL_OFFSET };
 
   // Stroke stops short of the head tip so the triangle sits cleanly on the end,
   // and everything is sized a bit smaller than the cell so neighbouring cords
@@ -601,8 +609,8 @@ function animateLeave(arrow, group, onDone) {
   const hw = cell * 0.24;
 
   // The tail knot sits at the rope's starting point; for a single-cell arrow
-  // that's one cell behind the head, off the front of the shared path.
-  const tailArc = n > 1 ? 0 : -cell;
+  // that's a short way behind the head, off the front of the shared path.
+  const tailArc = n > 1 ? 0 : -cell * TAIL_OFFSET;
 
   const headArc = cum[n - 1];
   // Polyline runs from the tail up to the arrowhead base.
