@@ -181,14 +181,25 @@
         if (other === single) continue;
         const tail = other.cells[0];
         if (Math.abs(tail[0] - r) + Math.abs(tail[1] - c) !== 1) continue;
+
+        let mergedDir = other.dir;
+        if (other.cells.length === 1) {
+          // A 1-cell cord has no body direction to extend; instead turn it
+          // into a straight 2-cell arrow pointing from the new tail toward
+          // the old cell, so it never renders at an angle to its arrowhead.
+          const dr = tail[0] - r;
+          const dc = tail[1] - c;
+          mergedDir = DIR_NAMES.find((d) => DIRS[d].dr === dr && DIRS[d].dc === dc);
+        }
+
         const head = other.cells[other.cells.length - 1];
-        if (onForwardRay(r, c, { r: head[0], c: head[1] }, other.dir)) continue;
+        if (onForwardRay(r, c, { r: head[0], c: head[1] }, mergedDir)) continue;
 
         const merged = result
           .filter((arrow) => arrow !== single)
           .map((arrow) =>
             arrow === other
-              ? { cells: [[r, c], ...arrow.cells], dir: arrow.dir }
+              ? { cells: [[r, c], ...arrow.cells], dir: mergedDir }
               : arrow
           );
         try {
