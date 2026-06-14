@@ -617,6 +617,10 @@ body {
   touch-action: none;
 }
 
+.board-zoom-anim {
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .board-panel {
   fill: var(--board-panel);
 }

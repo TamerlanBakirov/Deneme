@@ -31,6 +31,7 @@ const state = {
   boardZoom: 1,
   boardPanX: 0,
   boardPanY: 0,
+  boardIntroTimer: null,
 };
 
 const el = {
@@ -70,13 +71,15 @@ const el = {
   btnResetProgress: document.getElementById("btn-reset-progress"),
 };
 
-document.getElementById("btn-play").addEventListener("click", () => playLevel(state.level));
-document.getElementById("btn-back").addEventListener("click", () => showTab(state.returnTab));
+document.getElementById("btn-play").addEventListener("click", () => { playClick(); playLevel(state.level); });
+document.getElementById("btn-back").addEventListener("click", () => { playClick(); showTab(state.returnTab); });
 document.getElementById("btn-restart").addEventListener("click", () => {
+  playClick();
   if (state.mode === "daily") startDaily();
   else playLevel(state.level);
 });
 el.btnNext.addEventListener("click", () => {
+  playClick();
   el.winOverlay.classList.add("hidden");
   if (state.mode !== "daily") {
     state.level = Math.min(state.level + 1, LEVELS.length - 1);
@@ -84,14 +87,15 @@ el.btnNext.addEventListener("click", () => {
   showTab(state.returnTab);
 });
 document.getElementById("btn-retry").addEventListener("click", () => {
+  playClick();
   el.loseOverlay.classList.add("hidden");
   if (state.mode === "daily") startDaily();
   else playLevel(state.level);
 });
-el.btnDaily.addEventListener("click", startDaily);
+el.btnDaily.addEventListener("click", () => { playClick(); startDaily(); });
 
 el.navBtns.forEach((btn) => {
-  btn.addEventListener("click", () => showTab(btn.dataset.tab));
+  btn.addEventListener("click", () => { playClick(); showTab(btn.dataset.tab); });
 });
 
 el.toggleSound.addEventListener("click", () => {
@@ -249,25 +253,55 @@ function applySettings() {
 
 let audioCtx = null;
 
-function playTone(freq, duration, type) {
-  if (!state.settings.sound) return;
+function ensureAudioCtx() {
   if (!audioCtx) {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
+    if (!AudioCtx) return null;
     audioCtx = new AudioCtx();
   }
   if (audioCtx.state === "suspended") audioCtx.resume();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
+  return audioCtx;
+}
+
+function playTone(freq, duration, type) {
+  if (!state.settings.sound) return;
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
   osc.type = type || "sine";
   osc.frequency.value = freq;
   gain.gain.value = 0.12;
-  osc.connect(gain).connect(audioCtx.destination);
-  const now = audioCtx.currentTime;
+  osc.connect(gain).connect(ctx.destination);
+  const now = ctx.currentTime;
   gain.gain.setValueAtTime(0.12, now);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
   osc.start(now);
   osc.stop(now + duration);
+}
+
+// Soft tap sound for general UI buttons.
+function playClick() {
+  playTone(420, 0.05, "sine");
+}
+
+// Rising sweep used when the board zooms in at the start of a level.
+function playZoomSound() {
+  if (!state.settings.sound) return;
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  const now = ctx.currentTime;
+  osc.frequency.setValueAtTime(260, now);
+  osc.frequency.exponentialRampToValueAtTime(520, now + 0.5);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.07, now + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.5);
 }
 
 function vibrate(pattern) {
@@ -441,7 +475,7 @@ function renderCollection() {
     else if (i === state.level) cell.classList.add("current");
     else cell.classList.add("locked");
     cell.disabled = i > state.level;
-    if (i <= state.level) cell.addEventListener("click", () => playLevel(i));
+    if (i <= state.level) cell.addEventListener("click", () => { playClick(); playLevel(i); });
 
     const num = document.createElement("span");
     num.className = "cell-num";
@@ -558,18 +592,48 @@ function renderBoard() {
   }
 
   resetBoardView();
+  scheduleBoardIntroZoom();
 }
 
 // ---------- Pinch-to-zoom / pan ----------
 
 const BOARD_ZOOM_MIN = 1;
 const BOARD_ZOOM_MAX = 4;
+// On level start, after showing the whole board, ease in to roughly this
+// many cells across.
+const BOARD_INTRO_TARGET_CELLS = 16;
+const BOARD_INTRO_DELAY = 450;
 
 function resetBoardView() {
+  if (state.boardIntroTimer) {
+    clearTimeout(state.boardIntroTimer);
+    state.boardIntroTimer = null;
+  }
+  el.board.classList.remove("board-zoom-anim");
   state.boardZoom = 1;
   state.boardPanX = 0;
   state.boardPanY = 0;
   applyBoardTransform();
+}
+
+// Show the full board first, then ease in to a closer view (~16 cells
+// across) so cells are easier to tap on large boards.
+function scheduleBoardIntroZoom() {
+  const g = state.geom;
+  const target = Math.max(BOARD_ZOOM_MIN, Math.min(BOARD_ZOOM_MAX, g.cols / BOARD_INTRO_TARGET_CELLS));
+  if (target <= BOARD_ZOOM_MIN + 0.01) return;
+  state.boardIntroTimer = setTimeout(() => {
+    state.boardIntroTimer = null;
+    el.board.classList.add("board-zoom-anim");
+    state.boardZoom = target;
+    clampBoardPan();
+    applyBoardTransform();
+    playZoomSound();
+    el.board.addEventListener("transitionend", function once() {
+      el.board.classList.remove("board-zoom-anim");
+      el.board.removeEventListener("transitionend", once);
+    });
+  }, BOARD_INTRO_DELAY);
 }
 
 function applyBoardTransform() {
@@ -602,6 +666,11 @@ function setupBoardZoom() {
   let pan = null;
 
   el.boardWrap.addEventListener("pointerdown", (e) => {
+    if (state.boardIntroTimer) {
+      clearTimeout(state.boardIntroTimer);
+      state.boardIntroTimer = null;
+    }
+    el.board.classList.remove("board-zoom-anim");
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       pan = { startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, moved: false };
