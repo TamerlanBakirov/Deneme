@@ -159,7 +159,48 @@
     // Placement order is the reverse of removal order.
     const arrows = removalOrder.reverse();
     validate(arrows);
-    return { arrows };
+    return { arrows: reduceCornerSingles(arrows, rows, cols) };
+  }
+
+  // Single-cell cords ("tekli ok") tend to land in board corners. Fold any
+  // such corner cell into a neighboring cord's tail (extending it by one
+  // cell) when that keeps the puzzle solvable, leaving every other cord
+  // untouched.
+  function reduceCornerSingles(arrows, rows, cols) {
+    const isCornerCell = (r, c) =>
+      (r === 0 || r === rows - 1) && (c === 0 || c === cols - 1);
+
+    let result = arrows;
+    for (let a = result.length - 1; a >= 0; a--) {
+      const single = result[a];
+      if (single.cells.length !== 1) continue;
+      const [r, c] = single.cells[0];
+      if (!isCornerCell(r, c)) continue;
+
+      for (const other of result) {
+        if (other === single) continue;
+        const tail = other.cells[0];
+        if (Math.abs(tail[0] - r) + Math.abs(tail[1] - c) !== 1) continue;
+        const head = other.cells[other.cells.length - 1];
+        if (onForwardRay(r, c, { r: head[0], c: head[1] }, other.dir)) continue;
+
+        const merged = result
+          .filter((arrow) => arrow !== single)
+          .map((arrow) =>
+            arrow === other
+              ? { cells: [[r, c], ...arrow.cells], dir: arrow.dir }
+              : arrow
+          );
+        try {
+          validate(merged);
+          result = merged;
+          break;
+        } catch (e) {
+          // Merging here would make the level unsolvable; try another neighbor.
+        }
+      }
+    }
+    return result;
   }
 
   // Simulate the intended solution (reverse placement order) and assert each
