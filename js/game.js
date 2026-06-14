@@ -877,8 +877,15 @@ function isRemovable(arrow) {
 // Slide the whole arrow off the board in its travel direction as one rigid
 // piece, fading out as it goes. The head's lane is already clear, and keeping
 // the shape rigid (a plain translate) makes the motion perfectly smooth — no
-// bending or creasing around its own corners. Driven by the Web Animations API
-// so the browser composites it on its own thread.
+// bending or creasing around its own corners.
+//
+// Driven by requestAnimationFrame and the SVG `transform` attribute rather
+// than the Web Animations API: animating the CSS `transform` property on SVG
+// elements is unreliable across browsers (especially with `transform-box:
+// fill-box`, used elsewhere for the press/enter effects), and a silent
+// failure there made the whole exit animation invisible. The `transform`
+// *attribute* and the `opacity` style are universally supported and don't
+// fight the existing CSS transitions/classes on `.arrow-group`.
 function animateLeave(arrow, group, onDone) {
   const g = state.geom;
   const { dr, dc } = DIRS[arrow.dir];
@@ -889,28 +896,13 @@ function animateLeave(arrow, group, onDone) {
   const duration = Math.min(620, 380 + n * 24);
 
   const finish = once(onDone);
-
-  if (typeof group.animate === "function") {
-    const anim = group.animate(
-      [
-        { transform: "translate(0px, 0px)", opacity: 1, offset: 0 },
-        { opacity: 1, offset: 0.5 },
-        { transform: `translate(${tx}px, ${ty}px)`, opacity: 0, offset: 1 },
-      ],
-      { duration, easing: "cubic-bezier(0.36, 0, 0.66, 1)", fill: "forwards" }
-    );
-    anim.onfinish = finish;
-    anim.oncancel = finish;
-    return;
-  }
-
-  // Fallback for environments without the Web Animations API.
   const start = performance.now();
+
   function frame(now) {
     const t = Math.min(1, (now - start) / duration);
-    const eased = t * t;
+    const eased = t * t * t; // ease-in: slow start, accelerates off-board
     group.setAttribute("transform", `translate(${(tx * eased).toFixed(2)} ${(ty * eased).toFixed(2)})`);
-    group.style.opacity = t < 0.5 ? "1" : String(Math.max(0, 1 - (t - 0.5) / 0.5));
+    group.style.opacity = t < 0.45 ? "1" : String(Math.max(0, 1 - (t - 0.45) / 0.55));
     if (t < 1) requestAnimationFrame(frame);
     else finish();
   }
