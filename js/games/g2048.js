@@ -3,24 +3,30 @@
 //
 // Tiles are persistent DOM elements that animate (slide/merge/spawn) between
 // moves rather than being re-created each frame, for a professional game feel.
+// Levels (via ArcadeUI) define a target tile value; reaching it earns stars
+// once the run ends (no more moves).
 window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 (function () {
   const SIZE = 4;
   const STYLE_ID = "g2048-game-style";
   const VEC = { left: [0, -1], right: [0, 1], up: [-1, 0], down: [1, 0] };
   const SLIDE_MS = 130; // keep in sync with the CSS transition below
+  const TOTAL_LEVELS = 8;
+  const LEVEL_TARGETS = [64, 128, 256, 512, 1024, 2048, 4096, 8192];
 
   // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const LOCAL = {
-    en: { keep_going: "Keep going!", reached: "You made 2048!" },
-    tr: { keep_going: "Devam et!", reached: "2048'e ulaştın!" },
+    en: { reached: "Target reached!", keep_going: "Keep going for more stars!", target_hint: "Reach {n} to pass" },
+    tr: { reached: "Hedefe ulaştın!", keep_going: "Daha çok yıldız için devam et!", target_hint: "Geçmek için {n}'e ulaş" },
   };
   function lang() {
     const l = (document.documentElement.lang || "en").slice(0, 2);
     return LOCAL[l] ? l : "en";
   }
-  function lt(key) {
-    return (LOCAL[lang()] || LOCAL.en)[key] || LOCAL.en[key] || key;
+  function lt(key, vars) {
+    let s = (LOCAL[lang()] || LOCAL.en)[key] || LOCAL.en[key] || key;
+    if (vars) for (const k in vars) s = s.replace("{" + k + "}", vars[k]);
+    return s;
   }
 
   // Tile color ramp tuned for the warm cream/orange theme with readable text.
@@ -44,15 +50,16 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     const s = document.createElement("style");
     s.id = STYLE_ID;
     s.textContent = `
-      .game-2048 { align-items:center; justify-content:center; gap:16px; padding:16px; box-sizing:border-box; }
-      .g2048-wrap { display:flex; flex-direction:column; align-items:center; gap:14px; width:100%; max-width:340px; }
-      .g2048-bar { display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px; }
-      .g2048-hint { color:var(--muted); font-size:13px; line-height:1.3; }
-      .g2048-new { border:none; cursor:pointer; border-radius:12px; padding:9px 14px;
-        font-size:14px; font-weight:600; color:#fff; background:var(--accent-deep);
-        box-shadow:0 3px 8px rgba(60,45,20,.18); transition:transform .12s var(--ease-out); }
-      .g2048-new:active { transform:scale(.94); }
-      .g2048-board { position:relative; width:100%; aspect-ratio:1; border-radius:16px;
+      .game-2048 { display:flex; flex-direction:column; min-height:0; flex:1; padding:14px; box-sizing:border-box; }
+      .g2048-wrap { display:flex; flex-direction:column; min-height:0; width:100%; height:100%; gap:10px; }
+      .g2048-bar { display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px; flex-wrap:wrap; }
+      .g2048-info { display:flex; flex-direction:column; gap:2px; }
+      .g2048-level-label { font-size:16px; font-weight:800; color:var(--accent-deep); }
+      .g2048-target { color:var(--muted); font-size:12px; }
+      .g2048-actions { display:flex; align-items:center; gap:8px; }
+      .g2048-actions .arcade-btn { padding:8px 13px; font-size:16px; line-height:1; }
+      .g2048-actions .arcade-btn:disabled { opacity:.4; }
+      .g2048-board { position:relative; border-radius:16px;
         background:var(--panel); padding:10px; box-sizing:border-box; touch-action:none;
         box-shadow:inset 0 2px 8px rgba(60,45,20,.10); user-select:none; -webkit-user-select:none; }
       .g2048-cell { position:absolute; border-radius:11px; background:var(--divider); opacity:.5; }
@@ -74,12 +81,12 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         100% { opacity:0; transform:translate(-50%,-150%) scale(1); }
       }
       .g2048-overlay { position:absolute; inset:0; border-radius:16px; display:flex;
-        flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center;
+        flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center;
         padding:18px; box-sizing:border-box; background:rgba(28,24,18,.78); color:#fff;
         animation:g2048-fade .25s var(--ease-out); z-index:8; }
       .g2048-overlay h3 { font-size:24px; font-weight:800; margin:0; }
       .g2048-overlay p { font-size:15px; margin:0; opacity:.9; }
-      .g2048-overlay .g2048-new { background:var(--accent); }
+      .g2048-overlay .star-row { color:rgba(255,255,255,.3); }
       @keyframes g2048-fade { from { opacity:0; } to { opacity:1; } }
       .g2048-toast { position:absolute; left:50%; top:14px; transform:translateX(-50%);
         background:var(--accent-deep); color:#fff; font-size:13px; font-weight:600;
@@ -97,21 +104,37 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
   let api = null;
   let root = null;
+  let view = "select";   // "select" | "play"
+  let level = 0;         // current level index (0-based)
   let board = null;       // grid container
+  let boardArea = null;   // flex area that the board is sized to fill
+  let undoBtn = null;
   let grid = [];          // 4x4 of tile|null
   let tiles = [];         // all live tile objects { value, r, c, el, mergedThis }
   let score = 0;
-  let won = false;        // already celebrated 2048
+  let levelMaxTile = 2;   // highest tile value reached this attempt
+  let targetReached = false; // already celebrated this attempt's target
+  let undoSnap = null;    // one-step undo snapshot
   let over = false;
   let animating = false;  // input lock during a slide
   let keyHandler = null;
-  let raf = 0;
   let finalizeTimer = 0;
   let resizeHandler = null;
   // pointer state
   let ptrId = null;
   let startX = 0;
   let startY = 0;
+
+  function levelTarget() {
+    return LEVEL_TARGETS[level] || LEVEL_TARGETS[LEVEL_TARGETS.length - 1];
+  }
+
+  function computeStars(maxVal, target) {
+    if (maxVal >= target * 4) return 3;
+    if (maxVal >= target * 2) return 2;
+    if (maxVal >= target) return 1;
+    return 0;
+  }
 
   function updateHeader() {
     const best = api.best();
@@ -210,7 +233,10 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   function newGame() {
     if (finalizeTimer) { clearTimeout(finalizeTimer); finalizeTimer = 0; }
     score = 0;
-    won = false;
+    levelMaxTile = 2;
+    targetReached = false;
+    undoSnap = null;
+    if (undoBtn) undoBtn.disabled = true;
     over = false;
     animating = false;
     grid = [];
@@ -241,9 +267,49 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     setTimeout(() => { if (pop.parentNode) pop.parentNode.removeChild(pop); }, 720);
   }
 
+  // ---- One-step undo: snapshot is plain values, board is rebuilt on restore ----
+  function snapshotState() {
+    const vals = [];
+    for (let r = 0; r < SIZE; r++) {
+      const row = [];
+      for (let c = 0; c < SIZE; c++) row.push(grid[r][c] ? grid[r][c].value : null);
+      vals.push(row);
+    }
+    return { vals, score, levelMaxTile, targetReached };
+  }
+
+  function restoreSnapshot(snap) {
+    if (finalizeTimer) { clearTimeout(finalizeTimer); finalizeTimer = 0; }
+    animating = false;
+    over = false;
+    score = snap.score;
+    levelMaxTile = snap.levelMaxTile;
+    targetReached = snap.targetReached;
+    grid = [];
+    for (let r = 0; r < SIZE; r++) grid.push([null, null, null, null]);
+    tiles = [];
+    board.innerHTML = "";
+    drawCells();
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const v = snap.vals[r][c];
+        if (v) makeTile(r, c, v, false);
+      }
+    }
+    updateHeader();
+  }
+
+  function doUndo() {
+    if (!undoSnap || animating || view !== "play") return;
+    restoreSnapshot(undoSnap);
+    undoSnap = null;
+    if (undoBtn) undoBtn.disabled = true;
+  }
+
   // dir: 'left','right','up','down'
   function move(dir) {
     if (over || animating) return;
+    const preSnap = snapshotState();
     const vec = VEC[dir];
     const order = traversalOrder(dir);
     let moved = false;
@@ -290,6 +356,9 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
     if (!moved) return;
 
+    undoSnap = preSnap;
+    if (undoBtn) undoBtn.disabled = false;
+
     // animate every tile toward its new logical position
     animating = true;
     for (const t of tiles) placeEl(t);
@@ -305,7 +374,6 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     finalizeTimer = setTimeout(() => {
       finalizeTimer = 0;
       // resolve merges: drop the victim, level up the survivor
-      let reached2048 = false;
       for (const m of merges) {
         if (m.victim.el && m.victim.el.parentNode) m.victim.el.parentNode.removeChild(m.victim.el);
         const vi = tiles.indexOf(m.victim);
@@ -316,7 +384,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         void m.survivor.el.offsetWidth; // reflow so the bump replays
         m.survivor.el.classList.add("g2048-merged");
         gainPopup(m.survivor.r, m.survivor.c, m.value);
-        if (m.value === 2048) reached2048 = true;
+        if (m.value > levelMaxTile) levelMaxTile = m.value;
       }
 
       score += gained;
@@ -324,7 +392,10 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       spawnTile();
       updateHeader();
 
-      if (reached2048 && !won) { won = true; celebrate(); }
+      if (!targetReached && levelMaxTile >= levelTarget()) {
+        targetReached = true;
+        celebrate();
+      }
 
       animating = false;
       if (!hasMoves()) gameOver();
@@ -364,25 +435,53 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       api.tone(330, 0.14, "sawtooth");
       setTimeout(() => api.tone(196, 0.22, "sawtooth"), 130);
     }
+
+    const target = levelTarget();
+    const stars = computeStars(levelMaxTile, target);
+    ArcadeUI.recordResult("2048", TOTAL_LEVELS, level, stars);
+
     const ov = document.createElement("div");
     ov.className = "g2048-overlay";
+
     const h = document.createElement("h3");
-    h.textContent = api.t("game_over");
+    h.textContent = stars > 0 ? ArcadeUI.t("level_complete") : ArcadeUI.t("level_failed");
+
+    const starRow = document.createElement("div");
+    ArcadeUI.renderStars(starRow, stars);
+
     const p1 = document.createElement("p");
     p1.textContent = `${api.t("score_label")}: ${score}`;
     const p2 = document.createElement("p");
     p2.textContent = api.t("best_score", { score: best == null ? score : best });
-    const btn = document.createElement("button");
-    btn.className = "g2048-new";
-    btn.textContent = api.t("new_game");
-    btn.addEventListener("click", () => {
-      api.playClick();
-      newGame();
-    });
+
+    const actions = document.createElement("div");
+    actions.className = "arcade-result-actions";
+
+    const retryBtn = document.createElement("button");
+    retryBtn.className = "arcade-btn";
+    retryBtn.textContent = ArcadeUI.t("retry");
+    retryBtn.addEventListener("click", () => { api.playClick(); startLevel(level); });
+    actions.appendChild(retryBtn);
+
+    if (stars > 0 && level < TOTAL_LEVELS - 1) {
+      const nextBtn = document.createElement("button");
+      nextBtn.className = "arcade-btn primary";
+      nextBtn.textContent = ArcadeUI.t("next_level");
+      nextBtn.addEventListener("click", () => { api.playClick(); startLevel(level + 1); });
+      actions.appendChild(nextBtn);
+    }
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+    actions.appendChild(levelsBtn);
+
     ov.appendChild(h);
+    ov.appendChild(starRow);
     ov.appendChild(p1);
     ov.appendChild(p2);
-    ov.appendChild(btn);
+    ov.appendChild(actions);
     board.appendChild(ov);
   }
 
@@ -413,6 +512,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   }
 
   function onKey(e) {
+    if (view !== "play") return;
     let dir = null;
     if (e.key === "ArrowLeft") dir = "left";
     else if (e.key === "ArrowRight") dir = "right";
@@ -425,7 +525,8 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
   // Reposition all tiles without animating (orientation / size change).
   function reflow() {
-    if (!board) return;
+    if (!board || !boardArea) return;
+    ArcadeUI.fitSquare(boardArea, board);
     board.classList.add("no-anim");
     const g = geometry();
     board.querySelectorAll(".g2048-cell").forEach((cellEl, i) => {
@@ -440,6 +541,104 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     requestAnimationFrame(() => board && board.classList.remove("no-anim"));
   }
 
+  // ---- Level select ----
+  function showLevelSelect() {
+    view = "select";
+    if (finalizeTimer) { clearTimeout(finalizeTimer); finalizeTimer = 0; }
+    animating = false;
+    board = null;
+    boardArea = null;
+    undoBtn = null;
+    root.innerHTML = "";
+
+    const wrap = document.createElement("div");
+    wrap.className = "arcade-level-select";
+
+    const hint = document.createElement("p");
+    hint.className = "arcade-level-hint";
+    hint.textContent = ArcadeUI.t("tap_to_play");
+    wrap.appendChild(hint);
+
+    const gridHost = document.createElement("div");
+    wrap.appendChild(gridHost);
+    root.appendChild(wrap);
+
+    const progress = ArcadeUI.loadProgress("2048", TOTAL_LEVELS);
+    ArcadeUI.renderLevelGrid(gridHost, {
+      total: TOTAL_LEVELS,
+      progress,
+      onSelect: (i) => startLevel(i),
+    });
+
+    api.setScore("");
+  }
+
+  // ---- Play view ----
+  function startLevel(i) {
+    level = Math.max(0, Math.min(i, TOTAL_LEVELS - 1));
+    view = "play";
+    buildPlayUI();
+    newGame();
+  }
+
+  function buildPlayUI() {
+    root.innerHTML = "";
+
+    const wrap = document.createElement("div");
+    wrap.className = "g2048-wrap";
+
+    const bar = document.createElement("div");
+    bar.className = "g2048-bar";
+
+    const info = document.createElement("div");
+    info.className = "g2048-info";
+    const levelLabel = document.createElement("div");
+    levelLabel.className = "g2048-level-label";
+    levelLabel.textContent = ArcadeUI.t("level_n", { n: level + 1 });
+    const targetLabel = document.createElement("div");
+    targetLabel.className = "g2048-target";
+    targetLabel.textContent = lt("target_hint", { n: levelTarget() });
+    info.appendChild(levelLabel);
+    info.appendChild(targetLabel);
+
+    const actions = document.createElement("div");
+    actions.className = "g2048-actions";
+
+    undoBtn = document.createElement("button");
+    undoBtn.className = "arcade-btn";
+    undoBtn.textContent = "↺";
+    undoBtn.title = "Undo";
+    undoBtn.disabled = true;
+    undoBtn.addEventListener("click", () => { api.playClick(); doUndo(); });
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-levels-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+
+    actions.appendChild(undoBtn);
+    actions.appendChild(levelsBtn);
+
+    bar.appendChild(info);
+    bar.appendChild(actions);
+
+    boardArea = document.createElement("div");
+    boardArea.className = "arcade-board-area";
+
+    board = document.createElement("div");
+    board.className = "g2048-board";
+    board.addEventListener("pointerdown", onPointerDown);
+    board.addEventListener("pointerup", onPointerUp);
+    board.addEventListener("pointercancel", onPointerCancel);
+
+    boardArea.appendChild(board);
+    wrap.appendChild(bar);
+    wrap.appendChild(boardArea);
+    root.appendChild(wrap);
+
+    ArcadeUI.fitSquare(boardArea, board);
+  }
+
   window.ARCADE_GAMES.push({
     id: "2048",
     emoji: "🔢",
@@ -451,50 +650,20 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       api = a;
       root = rootEl;
       root.innerHTML = "";
-
-      const wrap = document.createElement("div");
-      wrap.className = "g2048-wrap";
-
-      const bar = document.createElement("div");
-      bar.className = "g2048-bar";
-      const hint = document.createElement("div");
-      hint.className = "g2048-hint";
-      hint.textContent = api.t("game_2048_desc");
-      const newBtn = document.createElement("button");
-      newBtn.className = "g2048-new";
-      newBtn.textContent = api.t("new_game");
-      newBtn.addEventListener("click", () => {
-        api.playClick();
-        newGame();
-      });
-      bar.appendChild(hint);
-      bar.appendChild(newBtn);
-
-      board = document.createElement("div");
-      board.className = "g2048-board";
-      board.addEventListener("pointerdown", onPointerDown);
-      board.addEventListener("pointerup", onPointerUp);
-      board.addEventListener("pointercancel", onPointerCancel);
-
-      wrap.appendChild(bar);
-      wrap.appendChild(board);
-      root.appendChild(wrap);
+      view = "select";
 
       keyHandler = onKey;
       document.addEventListener("keydown", keyHandler);
-      resizeHandler = reflow;
+      resizeHandler = () => { if (view === "play") reflow(); };
       window.addEventListener("resize", resizeHandler);
 
-      // Build the board once layout is measurable.
-      raf = requestAnimationFrame(() => newGame());
+      showLevelSelect();
     },
     unmount() {
       if (keyHandler) document.removeEventListener("keydown", keyHandler);
       keyHandler = null;
       if (resizeHandler) window.removeEventListener("resize", resizeHandler);
       resizeHandler = null;
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
       if (finalizeTimer) { clearTimeout(finalizeTimer); finalizeTimer = 0; }
       if (board) {
         board.removeEventListener("pointerdown", onPointerDown);
@@ -503,10 +672,15 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       }
       ptrId = null;
       board = null;
+      boardArea = null;
+      undoBtn = null;
       root = null;
       api = null;
       grid = [];
       tiles = [];
+      view = "select";
+      level = 0;
+      undoSnap = null;
     },
   });
 })();
