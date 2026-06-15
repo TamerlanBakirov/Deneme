@@ -20,7 +20,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
 const Arcade = (() => {
   const el = {
-    grid: document.getElementById("arcade-grid"),
+    grid: document.getElementById("home-games-grid"),
     screen: document.getElementById("arcade-game"),
     root: document.getElementById("arcade-root"),
     title: document.getElementById("arcade-game-title"),
@@ -105,8 +105,8 @@ const Arcade = (() => {
   }
 
   // Tear down the running game. When `restoreTab` is true (back button), return
-  // to the games grid; when false (caller is switching tabs), just clean up and
-  // let the caller pick the next screen.
+  // to the home hub; when false (caller is switching tabs via showTab), just
+  // clean up and let the caller pick the next screen.
   function closeGame(restoreTab = true) {
     if (active && typeof active.unmount === "function") {
       try {
@@ -119,12 +119,8 @@ const Arcade = (() => {
     el.root.innerHTML = "";
     el.screen.classList.add("hidden");
     if (restoreTab) {
-      el.grid.parentElement.classList.remove("hidden");
-      document.getElementById("bottom-nav").classList.remove("hidden");
-      document
-        .querySelectorAll(".nav-btn")
-        .forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === "arcade"));
-      renderGrid();
+      // Return to the home hub (which re-renders the game grid with fresh bests).
+      if (typeof showTab === "function") showTab("home");
     }
   }
 

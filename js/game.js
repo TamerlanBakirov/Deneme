@@ -44,7 +44,6 @@ const el = {
   home: document.getElementById("home-screen"),
   challenge: document.getElementById("challenge-screen"),
   collection: document.getElementById("collection-screen"),
-  arcade: document.getElementById("arcade-screen"),
   arcadeGame: document.getElementById("arcade-game"),
   settings: document.getElementById("settings-screen"),
   game: document.getElementById("game-screen"),
@@ -706,7 +705,6 @@ function hideTabScreens() {
   el.home.classList.add("hidden");
   el.challenge.classList.add("hidden");
   el.collection.classList.add("hidden");
-  el.arcade.classList.add("hidden");
   el.settings.classList.add("hidden");
   el.bottomNav.classList.add("hidden");
 }
@@ -728,7 +726,6 @@ function showTab(tab) {
   el.home.classList.toggle("hidden", tab !== "home");
   el.challenge.classList.toggle("hidden", tab !== "challenge");
   el.collection.classList.toggle("hidden", tab !== "collection");
-  el.arcade.classList.toggle("hidden", tab !== "arcade");
   el.settings.classList.toggle("hidden", tab !== "settings");
 
   el.navBtns.forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === tab));
@@ -739,7 +736,7 @@ function showTab(tab) {
     renderCollection();
     renderAchievements();
   }
-  if (tab === "arcade") Arcade.renderGrid();
+  if (tab === "home" && typeof Arcade !== "undefined") Arcade.renderGrid();
 }
 
 function renderCollection() {

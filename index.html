@@ -9,15 +9,27 @@
 <body>
   <div class="app">
 
-    <!-- Home -->
+    <!-- Home / hub -->
     <section id="home-screen" class="screen tab-screen">
-      <div class="splash-center">
+      <div class="home-logo">
         <div class="logo">
           <span class="logo-knot" aria-hidden="true"></span><span class="logo-text">Knot Escape</span>
         </div>
-        <p class="splash-level" id="splash-level"></p>
       </div>
-      <button id="btn-play" class="play-btn" data-i18n="play">Play</button>
+
+      <button id="btn-play" class="home-feature">
+        <span class="home-feature-art" aria-hidden="true">🪢</span>
+        <span class="home-feature-text">
+          <span class="home-feature-title">Knot Escape</span>
+          <span class="home-feature-sub" id="splash-level"></span>
+        </span>
+        <span class="home-feature-cta" data-i18n="play">Play</span>
+      </button>
+
+      <div class="home-section-head">
+        <h3 data-i18n="arcade_title">Mini Games</h3>
+      </div>
+      <div class="arcade-grid" id="home-games-grid"></div>
     </section>
 
     <!-- Daily challenge -->
@@ -50,13 +62,6 @@
       <div class="level-grid" id="level-grid"></div>
       <div class="tab-header"><h2 data-i18n="achievements">Achievements</h2></div>
       <div class="achv-grid" id="achv-grid"></div>
-    </section>
-
-    <!-- Mini-games hub -->
-    <section id="arcade-screen" class="screen tab-screen hidden">
-      <div class="tab-header"><h2 data-i18n="arcade_title">Mini Games</h2></div>
-      <p class="arcade-subtitle" data-i18n="arcade_subtitle">More ways to play and beat your best.</p>
-      <div class="arcade-grid" id="arcade-grid"></div>
     </section>
 
     <!-- Settings -->
@@ -117,10 +122,6 @@
       <button class="nav-btn" data-tab="collection">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.4" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.4" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.4" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.4" /></svg>
         <span data-i18n="nav_levels">Levels</span>
-      </button>
-      <button class="nav-btn" data-tab="arcade">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="11" rx="3.5" /><path d="M7 10v4M5 12h4" /><circle cx="16" cy="11" r="1" /><circle cx="18.5" cy="13.5" r="1" /></svg>
-        <span data-i18n="nav_arcade">Games</span>
       </button>
       <button class="nav-btn" data-tab="settings">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" /></svg>

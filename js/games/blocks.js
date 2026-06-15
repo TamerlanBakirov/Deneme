@@ -9,8 +9,8 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
   // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const LOCAL = {
-    en: { hint: "Drag pieces to fill rows & columns" },
-    tr: { hint: "Parçaları sürükle, satır ve sütunları doldur" },
+    en: { hint: "Drag pieces to fill rows & columns", combo: "Combo x{n}!" },
+    tr: { hint: "Parçaları sürükle, satır ve sütunları doldur", combo: "Kombo x{n}!" },
   };
   function lang() {
     const l = (document.documentElement.lang || "en").slice(0, 2);
@@ -93,10 +93,14 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         inset 0 2px 3px rgba(255,255,255,.22); }
       .blocks-cell.preview-ok { opacity:.9; }
       .blocks-cell.preview-bad { opacity:.85; background:#d94f4f !important; }
-      .blocks-cell.clearing { animation:blocks-clear .28s var(--ease-out); }
-      @keyframes blocks-clear { 0% { transform:scale(1); }
-        45% { transform:scale(1.18); filter:brightness(1.5); }
-        100% { transform:scale(0); opacity:0; } }
+      .blocks-cell.clearing { animation:blocks-clear .38s var(--ease-out) both; }
+      @keyframes blocks-clear { 0% { transform:scale(1); filter:none; }
+        35% { transform:scale(1.16); filter:brightness(1.6) saturate(.4); background:#fff !important; }
+        100% { transform:scale(0); opacity:0; filter:brightness(1) saturate(1); } }
+      .blocks-cell.placed { animation:blocks-place .22s var(--ease-spring) both; }
+      @keyframes blocks-place { 0% { transform:scale(.55); }
+        60% { transform:scale(1.12); }
+        100% { transform:scale(1); } }
       .blocks-tray { display:flex; align-items:flex-end; justify-content:space-around;
         width:100%; min-height:84px; gap:8px; touch-action:none; }
       .blocks-slot { flex:1; display:flex; align-items:center; justify-content:center;
@@ -105,6 +109,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         transition:transform .14s var(--ease-spring), opacity .14s var(--ease-out); }
       .blocks-piece.empty { opacity:0; pointer-events:none; }
       .blocks-piece.dragging { opacity:0; }
+      .blocks-piece.unplayable { opacity:.32; }
       .blocks-pcell { border-radius:5px; box-shadow:inset 0 -2px 4px rgba(0,0,0,.18),
         inset 0 2px 3px rgba(255,255,255,.22); box-sizing:border-box; }
       .blocks-drag { position:fixed; z-index:50; pointer-events:none; display:grid;
@@ -128,6 +133,13 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         25% { opacity:1; transform:translate(-50%,-50%) scale(1.1); }
         70% { opacity:1; }
         100% { opacity:0; transform:translate(-50%,-70%) scale(1); } }
+      .blocks-popup { position:absolute; transform:translate(-50%,-50%);
+        font-size:15px; font-weight:800; color:var(--accent-deep); pointer-events:none;
+        z-index:25; text-shadow:0 1px 4px rgba(0,0,0,.25);
+        animation:blocks-popup .8s var(--ease-out) forwards; white-space:nowrap; }
+      @keyframes blocks-popup { 0% { opacity:0; transform:translate(-50%,-40%) scale(.7); }
+        15% { opacity:1; transform:translate(-50%,-60%) scale(1.05); }
+        100% { opacity:0; transform:translate(-50%,-160%) scale(1); } }
     `;
     document.head.appendChild(s);
   }
@@ -144,6 +156,8 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   let score = 0;
   let over = false;
   let raf = 0;
+  let combo = 0;          // consecutive clear streak
+  let timers = [];        // tracked setTimeout ids for cleanup on unmount
 
   // drag state
   let drag = null;         // { slot, shape, color, ghost, cellPx, gap, lastValid }
@@ -165,6 +179,37 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     const w = board.clientWidth - pad * 2;
     const cell = (w - gap * (SIZE - 1)) / SIZE;
     return { pad, gap, cell };
+  }
+
+  function trackTimeout(fn, ms) {
+    const id = setTimeout(() => {
+      timers = timers.filter((t) => t !== id);
+      fn();
+    }, ms);
+    timers.push(id);
+    return id;
+  }
+
+  function clearTimers() {
+    for (const id of timers) clearTimeout(id);
+    timers = [];
+  }
+
+  // Spawn a floating "+N" popup positioned over a board cell (row/col grid coords).
+  function spawnPopup(text, r, c) {
+    if (!board) return;
+    const m = cellMetrics();
+    const x = m.pad + c * (m.cell + m.gap) + m.cell / 2;
+    const y = m.pad + r * (m.cell + m.gap) + m.cell / 2;
+    const el = document.createElement("div");
+    el.className = "blocks-popup";
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    board.appendChild(el);
+    trackTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 850);
   }
 
   // ----- piece placement logic -----
@@ -247,6 +292,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       if (!entry) continue;
       const piece = makePieceEl(entry, false);
       piece.dataset.slot = i;
+      if (!canPlaceAnywhere(entry.shape)) piece.classList.add("unplayable");
       piece.addEventListener("pointerdown", onPiecePointerDown);
       slot.appendChild(piece);
     }
@@ -443,10 +489,15 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   function placePiece(slotIdx, shape, color, r0, c0) {
     if (!canPlace(shape, r0, c0)) return false;
     let cellsPlaced = 0;
+    let sumR = 0, sumC = 0;
     for (const [dr, dc] of shape) {
       grid[r0 + dr][c0 + dc] = color;
       cellsPlaced++;
+      sumR += r0 + dr;
+      sumC += c0 + dc;
     }
+    const anchorR = sumR / cellsPlaced;
+    const anchorC = sumC / cellsPlaced;
     tray[slotIdx] = null;
     score += cellsPlaced;
 
@@ -455,6 +506,24 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     if (api.soundOn()) api.tone(420, 0.05, "sine");
 
     renderGrid();
+
+    // Quick scale-pop on newly placed cells.
+    for (const [dr, dc] of shape) {
+      const el = cellAt(r0 + dr, c0 + dc);
+      el.classList.remove("placed");
+      // restart animation
+      void el.offsetWidth;
+      el.classList.add("placed");
+    }
+    trackTimeout(() => {
+      for (const [dr, dc] of shape) {
+        const el = cellAt(r0 + dr, c0 + dc);
+        if (el) el.classList.remove("placed");
+      }
+    }, 240);
+
+    // Floating "+N" popup near the placed piece.
+    spawnPopup("+" + cellsPlaced, anchorR, anchorC);
 
     // Determine full rows/columns.
     const fullRows = [];
@@ -474,6 +543,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     if (totalLines > 0) {
       clearLines(fullRows, fullCols, totalLines);
     } else {
+      combo = 0;
       renderTray();
     }
 
@@ -496,44 +566,68 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   }
 
   function clearLines(rows, cols, totalLines) {
-    // bonus: cleared_lines * 10 * combo multiplier
-    const combo = totalLines;
-    const bonus = totalLines * 10 * combo;
+    // combo streak builds across consecutive placements that clear lines
+    combo += 1;
+    const comboMultiplier = combo;
+    const bonus = totalLines * 10 * comboMultiplier;
     score += bonus;
 
-    // mark clearing animation
+    // mark clearing animation, staggered per-cell for a sweep effect
     const marked = new Set();
     for (const r of rows)
       for (let c = 0; c < SIZE; c++) marked.add(r * SIZE + c);
     for (const c of cols)
       for (let r = 0; r < SIZE; r++) marked.add(r * SIZE + c);
-    for (const idx of marked) cellEls[idx].classList.add("clearing");
+
+    for (const idx of marked) {
+      const r = Math.floor(idx / SIZE);
+      const c = idx % SIZE;
+      const delay = (r + c) * 12; // diagonal sweep
+      const el = cellEls[idx];
+      el.style.animationDelay = delay + "ms";
+      el.classList.add("clearing");
+    }
 
     api.vibrate(totalLines > 1 ? [20, 40, 20] : 18);
     if (api.soundOn()) {
       api.tone(620, 0.08, "triangle");
-      if (totalLines > 1) setTimeout(() => api.tone(820, 0.12, "triangle"), 90);
+      if (totalLines > 1) trackTimeout(() => api.tone(820, 0.12, "triangle"), 90);
     }
 
-    if (totalLines > 1) {
+    // Score popup for the line-clear bonus, centered over the cleared area.
+    let sumR = 0, sumC = 0, n = 0;
+    for (const idx of marked) {
+      sumR += Math.floor(idx / SIZE);
+      sumC += idx % SIZE;
+      n++;
+    }
+    if (n > 0) spawnPopup("+" + bonus, sumR / n, sumC / n);
+
+    // Combo banner when 2+ lines clear at once, or a consecutive-clear streak builds.
+    if (totalLines > 1 || combo > 1) {
+      const n2 = totalLines > 1 ? totalLines : combo;
       const combEl = document.createElement("div");
       combEl.className = "blocks-combo";
-      combEl.textContent = totalLines + "x!";
+      combEl.textContent = lt("combo").replace("{n}", n2);
       wrap.appendChild(combEl);
-      setTimeout(() => { if (combEl.parentNode) combEl.parentNode.removeChild(combEl); }, 800);
+      trackTimeout(() => { if (combEl.parentNode) combEl.parentNode.removeChild(combEl); }, 800);
     }
 
     // after animation, remove cells from data and re-render
     raf = requestAnimationFrame(() => {
-      setTimeout(() => {
+      trackTimeout(() => {
         for (const r of rows)
           for (let c = 0; c < SIZE; c++) grid[r][c] = null;
         for (const c of cols)
           for (let r = 0; r < SIZE; r++) grid[r][c] = null;
-        for (const idx of marked) cellEls[idx].classList.remove("clearing");
+        for (const idx of marked) {
+          cellEls[idx].classList.remove("clearing");
+          cellEls[idx].style.animationDelay = "";
+        }
         renderGrid();
+        renderTray();
         updateHeader();
-      }, 260);
+      }, 260 + (SIZE * 2 - 2) * 12);
     });
   }
 
@@ -570,6 +664,12 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   function newGame() {
     over = false;
     score = 0;
+    combo = 0;
+    clearTimers();
+    // remove any stray popups/combo banners from a previous game
+    if (wrap) {
+      wrap.querySelectorAll(".blocks-combo, .blocks-popup").forEach((el) => el.remove());
+    }
     grid = [];
     for (let r = 0; r < SIZE; r++) {
       const row = [];
@@ -642,6 +742,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       teardownDrag();
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
+      clearTimers();
       board = null;
       trayEl = null;
       slotEls = [];
@@ -650,6 +751,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       root = null;
       api = null;
       over = false;
+      combo = 0;
     },
   });
 })();

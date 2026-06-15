@@ -1,9 +1,14 @@
 // 2048 — slide and merge tiles on a 4x4 grid to reach 2048. Self-contained
 // arcade module; see js/arcade.js for the host contract.
+//
+// Tiles are persistent DOM elements that animate (slide/merge/spawn) between
+// moves rather than being re-created each frame, for a professional game feel.
 window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 (function () {
   const SIZE = 4;
   const STYLE_ID = "g2048-game-style";
+  const VEC = { left: [0, -1], right: [0, 1], up: [-1, 0], down: [1, 0] };
+  const SLIDE_MS = 130; // keep in sync with the CSS transition below
 
   // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const LOCAL = {
@@ -53,16 +58,25 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       .g2048-cell { position:absolute; border-radius:11px; background:var(--divider); opacity:.5; }
       .g2048-tile { position:absolute; border-radius:11px; display:flex; align-items:center;
         justify-content:center; font-weight:800; line-height:1; box-sizing:border-box;
-        box-shadow:0 2px 6px rgba(60,45,20,.16);
-        transition:left .12s var(--ease-out), top .12s var(--ease-out); }
-      .g2048-tile.g2048-new-tile { animation:g2048-pop .16s var(--ease-spring); }
-      .g2048-tile.g2048-merged { animation:g2048-bump .18s var(--ease-spring); }
-      @keyframes g2048-pop { 0% { transform:scale(.2); opacity:0; } 100% { transform:scale(1); opacity:1; } }
-      @keyframes g2048-bump { 0% { transform:scale(1); } 45% { transform:scale(1.16); } 100% { transform:scale(1); } }
+        box-shadow:0 2px 6px rgba(60,45,20,.16); will-change:left,top,transform;
+        transition:left ${SLIDE_MS}ms var(--ease-out), top ${SLIDE_MS}ms var(--ease-out); }
+      .g2048-board.no-anim .g2048-tile { transition:none; }
+      .g2048-tile.g2048-new-tile { animation:g2048-pop .18s var(--ease-spring); }
+      .g2048-tile.g2048-merged { animation:g2048-bump .2s var(--ease-spring); z-index:2; }
+      @keyframes g2048-pop { 0% { transform:scale(.1); opacity:0; } 100% { transform:scale(1); opacity:1; } }
+      @keyframes g2048-bump { 0% { transform:scale(1); } 42% { transform:scale(1.18); } 100% { transform:scale(1); } }
+      .g2048-gain { position:absolute; z-index:6; font-weight:800; font-size:18px; color:var(--accent-deep);
+        pointer-events:none; text-shadow:0 1px 2px rgba(255,255,255,.6);
+        animation:g2048-gain 0.7s var(--ease-out) forwards; }
+      @keyframes g2048-gain {
+        0% { opacity:0; transform:translate(-50%,-20%) scale(.7); }
+        25% { opacity:1; transform:translate(-50%,-60%) scale(1); }
+        100% { opacity:0; transform:translate(-50%,-150%) scale(1); }
+      }
       .g2048-overlay { position:absolute; inset:0; border-radius:16px; display:flex;
         flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center;
         padding:18px; box-sizing:border-box; background:rgba(28,24,18,.78); color:#fff;
-        animation:g2048-fade .25s var(--ease-out); }
+        animation:g2048-fade .25s var(--ease-out); z-index:8; }
       .g2048-overlay h3 { font-size:24px; font-weight:800; margin:0; }
       .g2048-overlay p { font-size:15px; margin:0; opacity:.9; }
       .g2048-overlay .g2048-new { background:var(--accent); }
@@ -70,7 +84,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       .g2048-toast { position:absolute; left:50%; top:14px; transform:translateX(-50%);
         background:var(--accent-deep); color:#fff; font-size:13px; font-weight:600;
         padding:8px 14px; border-radius:999px; box-shadow:0 4px 12px rgba(60,45,20,.25);
-        animation:g2048-toast 2.2s var(--ease-out) forwards; pointer-events:none; z-index:5; }
+        animation:g2048-toast 2.2s var(--ease-out) forwards; pointer-events:none; z-index:7; }
       @keyframes g2048-toast {
         0% { opacity:0; transform:translateX(-50%) translateY(-6px); }
         12% { opacity:1; transform:translateX(-50%) translateY(0); }
@@ -84,12 +98,16 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   let api = null;
   let root = null;
   let board = null;       // grid container
-  let grid = [];          // 4x4 of {value} or null
+  let grid = [];          // 4x4 of tile|null
+  let tiles = [];         // all live tile objects { value, r, c, el, mergedThis }
   let score = 0;
   let won = false;        // already celebrated 2048
   let over = false;
+  let animating = false;  // input lock during a slide
   let keyHandler = null;
   let raf = 0;
+  let finalizeTimer = 0;
+  let resizeHandler = null;
   // pointer state
   let ptrId = null;
   let startX = 0;
@@ -103,34 +121,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     );
   }
 
-  function emptyCells() {
-    const out = [];
-    for (let r = 0; r < SIZE; r++)
-      for (let c = 0; c < SIZE; c++) if (!grid[r][c]) out.push([r, c]);
-    return out;
-  }
-
-  function spawnTile() {
-    const cells = emptyCells();
-    if (!cells.length) return null;
-    const [r, c] = cells[Math.floor(Math.random() * cells.length)];
-    grid[r][c] = { value: Math.random() < 0.9 ? 2 : 4, isNew: true };
-    return [r, c];
-  }
-
-  function newGame() {
-    score = 0;
-    won = false;
-    over = false;
-    grid = [];
-    for (let r = 0; r < SIZE; r++) grid.push([null, null, null, null]);
-    spawnTile();
-    spawnTile();
-    render();
-    updateHeader();
-  }
-
-  // Layout helpers: 4 cells with padding=10 and gap-ish spacing inside board.
+  // Layout helpers: 4 cells with padding=10 and gap spacing inside board.
   function geometry() {
     const pad = 10;
     const w = board.clientWidth - pad * 2;
@@ -155,11 +146,25 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     return Math.max(12, f) + "px";
   }
 
-  function render() {
-    if (!board) return;
+  function styleTile(t) {
     const g = geometry();
-    board.innerHTML = "";
-    // background cells
+    const colors = RAMP[t.value] || SUPER;
+    t.el.style.width = g.cell + "px";
+    t.el.style.height = g.cell + "px";
+    t.el.style.background = colors.bg;
+    t.el.style.color = colors.fg;
+    t.el.style.fontSize = fontFor(t.value, g.cell);
+    t.el.textContent = t.value;
+  }
+
+  function placeEl(t) {
+    t.el.style.left = posLeft(t.c) + "px";
+    t.el.style.top = posTop(t.r) + "px";
+  }
+
+  function drawCells() {
+    // background cells (drawn once per layout)
+    const g = geometry();
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
         const cellEl = document.createElement("div");
@@ -171,107 +176,123 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         board.appendChild(cellEl);
       }
     }
-    // tiles
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        const t = grid[r][c];
-        if (!t) continue;
-        const el = document.createElement("div");
-        el.className = "g2048-tile";
-        if (t.isNew) el.classList.add("g2048-new-tile");
-        if (t.merged) el.classList.add("g2048-merged");
-        const colors = RAMP[t.value] || SUPER;
-        el.style.width = g.cell + "px";
-        el.style.height = g.cell + "px";
-        el.style.left = posLeft(c) + "px";
-        el.style.top = posTop(r) + "px";
-        el.style.background = colors.bg;
-        el.style.color = colors.fg;
-        el.style.fontSize = fontFor(t.value, g.cell);
-        el.textContent = t.value;
-        board.appendChild(el);
-        // clear one-shot flags after attaching
-        t.isNew = false;
-        t.merged = false;
-      }
-    }
   }
 
-  // Slide+merge a single line (array of cell objects or null). Returns
-  // { line, gained, moved }. Mutates nothing of the original.
-  function collapseLine(line) {
-    const vals = line.filter((x) => x).map((x) => x.value);
-    const result = [];
-    let gained = 0;
-    let i = 0;
-    while (i < vals.length) {
-      if (i + 1 < vals.length && vals[i] === vals[i + 1]) {
-        const merged = vals[i] * 2;
-        result.push({ value: merged, merged: true });
-        gained += merged;
-        i += 2;
-      } else {
-        result.push({ value: vals[i] });
-        i += 1;
-      }
+  function makeTile(r, c, value, isNew) {
+    const t = { value, r, c, el: document.createElement("div"), mergedThis: false };
+    t.el.className = "g2048-tile";
+    styleTile(t);
+    placeEl(t);                // set final position BEFORE attaching → no slide
+    if (isNew) {
+      t.el.classList.add("g2048-new-tile");
+      setTimeout(() => t.el && t.el.classList.remove("g2048-new-tile"), 200);
     }
-    while (result.length < SIZE) result.push(null);
-    return { line: result, gained };
+    board.appendChild(t.el);
+    grid[r][c] = t;
+    tiles.push(t);
+    return t;
+  }
+
+  function emptyCells() {
+    const out = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) if (!grid[r][c]) out.push([r, c]);
+    return out;
+  }
+
+  function spawnTile() {
+    const cells = emptyCells();
+    if (!cells.length) return null;
+    const [r, c] = cells[Math.floor(Math.random() * cells.length)];
+    return makeTile(r, c, Math.random() < 0.9 ? 2 : 4, true);
+  }
+
+  function newGame() {
+    if (finalizeTimer) { clearTimeout(finalizeTimer); finalizeTimer = 0; }
+    score = 0;
+    won = false;
+    over = false;
+    animating = false;
+    grid = [];
+    for (let r = 0; r < SIZE; r++) grid.push([null, null, null, null]);
+    tiles = [];
+    board.innerHTML = "";
+    drawCells();
+    spawnTile();
+    spawnTile();
+    updateHeader();
+  }
+
+  function traversalOrder(dir) {
+    const idx = [0, 1, 2, 3];
+    const rows = dir === "down" ? idx.slice().reverse() : idx.slice();
+    const cols = dir === "right" ? idx.slice().reverse() : idx.slice();
+    return { rows, cols };
+  }
+
+  function gainPopup(r, c, amount) {
+    const g = geometry();
+    const pop = document.createElement("div");
+    pop.className = "g2048-gain";
+    pop.textContent = "+" + amount;
+    pop.style.left = posLeft(c) + g.cell / 2 + "px";
+    pop.style.top = posTop(r) + "px";
+    board.appendChild(pop);
+    setTimeout(() => { if (pop.parentNode) pop.parentNode.removeChild(pop); }, 720);
   }
 
   // dir: 'left','right','up','down'
   function move(dir) {
-    if (over) return;
+    if (over || animating) return;
+    const vec = VEC[dir];
+    const order = traversalOrder(dir);
     let moved = false;
     let gained = 0;
-    let reached2048 = false;
+    const merges = []; // { survivor, victim, value }
 
-    const lines = [];
-    for (let i = 0; i < SIZE; i++) {
-      let line;
-      if (dir === "left" || dir === "right") {
-        line = grid[i].slice();
-        if (dir === "right") line.reverse();
-      } else {
-        line = [grid[0][i], grid[1][i], grid[2][i], grid[3][i]];
-        if (dir === "down") line.reverse();
-      }
-      lines.push(line);
-    }
+    for (const t of tiles) t.mergedThis = false;
 
-    const newLines = lines.map((line) => {
-      const res = collapseLine(line);
-      gained += res.gained;
-      return res.line;
-    });
-
-    // detect movement by comparing value sequences (orientation-consistent)
-    for (let i = 0; i < SIZE; i++) {
-      const before = lines[i].map((x) => (x ? x.value : 0));
-      const after = newLines[i].map((x) => (x ? x.value : 0));
-      for (let j = 0; j < SIZE; j++) {
-        if (before[j] !== after[j]) { moved = true; break; }
+    for (const r of order.rows) {
+      for (const c of order.cols) {
+        const tile = grid[r][c];
+        if (!tile) continue;
+        // slide as far as possible into empty cells
+        let nr = r, nc = c;
+        while (true) {
+          const tr = nr + vec[0], tc = nc + vec[1];
+          if (tr < 0 || tr >= SIZE || tc < 0 || tc >= SIZE) break;
+          if (grid[tr][tc] === null) { nr = tr; nc = tc; }
+          else break;
+        }
+        // look one beyond for a merge target
+        const br = nr + vec[0], bc = nc + vec[1];
+        let mergedHere = false;
+        if (br >= 0 && br < SIZE && bc >= 0 && bc < SIZE) {
+          const other = grid[br][bc];
+          if (other && other.value === tile.value && !other.mergedThis) {
+            grid[r][c] = null;
+            tile.r = br; tile.c = bc;       // slide visually onto the survivor
+            other.mergedThis = true;
+            merges.push({ survivor: other, victim: tile, value: tile.value * 2 });
+            gained += tile.value * 2;
+            moved = true;
+            mergedHere = true;
+          }
+        }
+        if (!mergedHere && (nr !== r || nc !== c)) {
+          grid[r][c] = null;
+          grid[nr][nc] = tile;
+          tile.r = nr; tile.c = nc;
+          moved = true;
+        }
       }
     }
 
     if (!moved) return;
 
-    // write back
-    for (let i = 0; i < SIZE; i++) {
-      let line = newLines[i];
-      if (dir === "right" || dir === "down") line = line.slice().reverse();
-      for (let j = 0; j < SIZE; j++) {
-        const cell = line[j];
-        if (dir === "left" || dir === "right") {
-          grid[i][j] = cell;
-        } else {
-          grid[j][i] = cell;
-        }
-        if (cell && cell.value === 2048 && cell.merged) reached2048 = true;
-      }
-    }
-
-    score += gained;
+    // animate every tile toward its new logical position
+    animating = true;
+    for (const t of tiles) placeEl(t);
 
     if (gained > 0) {
       api.playClick();
@@ -281,18 +302,33 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       api.vibrate(6);
     }
 
-    spawnTile();
-    render();
-    updateHeader();
+    finalizeTimer = setTimeout(() => {
+      finalizeTimer = 0;
+      // resolve merges: drop the victim, level up the survivor
+      let reached2048 = false;
+      for (const m of merges) {
+        if (m.victim.el && m.victim.el.parentNode) m.victim.el.parentNode.removeChild(m.victim.el);
+        const vi = tiles.indexOf(m.victim);
+        if (vi >= 0) tiles.splice(vi, 1);
+        m.survivor.value = m.value;
+        styleTile(m.survivor);
+        m.survivor.el.classList.remove("g2048-merged");
+        void m.survivor.el.offsetWidth; // reflow so the bump replays
+        m.survivor.el.classList.add("g2048-merged");
+        gainPopup(m.survivor.r, m.survivor.c, m.value);
+        if (m.value === 2048) reached2048 = true;
+      }
 
-    if (gained > 0) api.saveBest(score);
+      score += gained;
+      if (gained > 0) api.saveBest(score);
+      spawnTile();
+      updateHeader();
 
-    if (reached2048 && !won) {
-      won = true;
-      celebrate();
-    }
+      if (reached2048 && !won) { won = true; celebrate(); }
 
-    if (!hasMoves()) gameOver();
+      animating = false;
+      if (!hasMoves()) gameOver();
+    }, SLIDE_MS + 10);
   }
 
   function hasMoves() {
@@ -387,6 +423,23 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     move(dir);
   }
 
+  // Reposition all tiles without animating (orientation / size change).
+  function reflow() {
+    if (!board) return;
+    board.classList.add("no-anim");
+    const g = geometry();
+    board.querySelectorAll(".g2048-cell").forEach((cellEl, i) => {
+      const r = Math.floor(i / SIZE), c = i % SIZE;
+      cellEl.style.width = g.cell + "px";
+      cellEl.style.height = g.cell + "px";
+      cellEl.style.left = posLeft(c) + "px";
+      cellEl.style.top = posTop(r) + "px";
+    });
+    for (const t of tiles) { styleTile(t); placeEl(t); }
+    // re-enable transitions on the next frame
+    requestAnimationFrame(() => board && board.classList.remove("no-anim"));
+  }
+
   window.ARCADE_GAMES.push({
     id: "2048",
     emoji: "🔢",
@@ -429,17 +482,20 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
       keyHandler = onKey;
       document.addEventListener("keydown", keyHandler);
+      resizeHandler = reflow;
+      window.addEventListener("resize", resizeHandler);
 
-      // Render once layout is measurable, and re-render on resize.
-      raf = requestAnimationFrame(() => {
-        newGame();
-      });
+      // Build the board once layout is measurable.
+      raf = requestAnimationFrame(() => newGame());
     },
     unmount() {
       if (keyHandler) document.removeEventListener("keydown", keyHandler);
       keyHandler = null;
+      if (resizeHandler) window.removeEventListener("resize", resizeHandler);
+      resizeHandler = null;
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
+      if (finalizeTimer) { clearTimeout(finalizeTimer); finalizeTimer = 0; }
       if (board) {
         board.removeEventListener("pointerdown", onPointerDown);
         board.removeEventListener("pointerup", onPointerUp);
@@ -449,6 +505,8 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       board = null;
       root = null;
       api = null;
+      grid = [];
+      tiles = [];
     },
   });
 })();
