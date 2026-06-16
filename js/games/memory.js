@@ -1,17 +1,33 @@
 // Memory Match — flip cards to find all the pairs. Self-contained arcade
 // module; see js/arcade.js for the host contract.
+//
+// Knot-Escape-style level system: 8 levels of increasing grid size (more
+// pairs = more cards). Stars are earned based on how few move-pairs it took
+// to clear the board. A combo streak rewards consecutive correct matches.
+window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 (function () {
-  window.ARCADE_GAMES = window.ARCADE_GAMES || [];
-  const FACES = ["🪢", "⭐", "🎈", "🍀", "🌙", "🔔", "🎲", "🍎", "🌸", "⚡", "🐢", "🎵"];
+  const TOTAL_LEVELS = 8;
+  const LEVEL_PAIRS = [3, 6, 8, 10, 12, 15, 18, 18];
+  // cols x rows for each level (cols*2*rows == pairs*2 for every entry).
+  const LEVEL_COLS = [2, 3, 4, 4, 4, 5, 6, 6];
+  const LEVEL_ROWS = [3, 4, 4, 5, 6, 6, 6, 6];
 
+  const FACES = [
+    "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯",
+    "🦁", "🐮", "🐷", "🐸", "🐵", "🐔", "🐧", "🦄",
+  ];
+
+  // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const STRINGS = {
-    en: { get_ready: "Get ready!", memorize: "Memorize the cards…" },
-    tr: { get_ready: "Hazır ol!", memorize: "Kartları ezberle…" },
+    en: { get_ready: "Get ready!", memorize: "Memorize the cards…", streak: "🔥 x{n}" },
+    tr: { get_ready: "Hazır ol!", memorize: "Kartları ezberle…", streak: "🔥 x{n}" },
   };
-  function tt(key) {
+  function tt(key, vars) {
     const lang = (document.documentElement.lang || "en").slice(0, 2);
     const dict = STRINGS[lang] || STRINGS.en;
-    return dict[key] || STRINGS.en[key] || key;
+    let s = dict[key] || STRINGS.en[key] || key;
+    if (vars) for (const k in vars) s = s.replace("{" + k + "}", vars[k]);
+    return s;
   }
 
   const STYLE_ID = "memory-game-style";
@@ -20,9 +36,14 @@
     const s = document.createElement("style");
     s.id = STYLE_ID;
     s.textContent = `
-      .game-memory { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:18px; }
+      .game-memory { display:flex; flex-direction:column; min-height:0; flex:1; padding:14px; box-sizing:border-box; }
+      .mem-wrap { display:flex; flex-direction:column; min-height:0; width:100%; height:100%; gap:10px; }
+      .mem-bar { display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px; flex-wrap:wrap; }
+      .mem-info { display:flex; flex-direction:column; gap:2px; }
+      .mem-level-label { font-size:16px; font-weight:800; color:var(--accent-deep); }
+      .mem-streak { color:var(--accent); font-size:13px; font-weight:700; min-height:16px; }
       .mem-hint { color:var(--muted); font-size:14px; min-height:18px; text-align:center; transition:opacity .3s ease; }
-      .mem-grid { display:grid; gap:10px; width:100%; max-width:360px; perspective:800px; }
+      .mem-grid { display:grid; gap:10px; perspective:800px; box-sizing:border-box; }
       .mem-card { aspect-ratio:1; border:none; border-radius:16px; background:transparent;
         padding:0; cursor:pointer; position:relative; }
       .mem-card:active .mem-flip { transform: scale(.94) rotateY(var(--mem-rot, 0deg)); }
@@ -52,12 +73,20 @@
       .mem-card.matched { opacity:.65; }
       .mem-card.peeking .mem-flip { transform: rotateY(180deg); --mem-rot: 180deg; }
 
-      .mem-win { display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center;
-        position:relative; padding:24px; border-radius:20px; background:var(--panel);
-        box-shadow:0 8px 28px rgba(0,0,0,.12); overflow:hidden; }
-      .mem-win h3 { color:var(--accent-deep); font-size:22px; margin:0; }
-      .mem-win p { color:var(--muted); font-size:15px; margin:0; }
-      .mem-confetti { position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius:20px; }
+      .mem-fonts-1 .mem-face { font-size:34px; }
+      .mem-fonts-2 .mem-face { font-size:26px; }
+      .mem-fonts-3 .mem-face { font-size:20px; }
+
+      .mem-overlay { position:absolute; inset:0; border-radius:16px; display:flex;
+        flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center;
+        padding:18px; box-sizing:border-box; background:rgba(28,24,18,.78); color:#fff;
+        animation:mem-fade .25s var(--ease-out); z-index:8; }
+      .mem-overlay h3 { font-size:24px; font-weight:800; margin:0; }
+      .mem-overlay p { font-size:15px; margin:0; opacity:.9; }
+      .mem-overlay .star-row { color:rgba(255,255,255,.3); }
+      @keyframes mem-fade { from { opacity:0; } to { opacity:1; } }
+
+      .mem-confetti { position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius:20px; z-index:9; }
       .mem-confetti span { position:absolute; top:-10%; font-size:18px; opacity:0;
         animation: mem-confetti-fall 1.1s ease-out forwards; }
       @keyframes mem-confetti-fall {
@@ -78,14 +107,24 @@
   }
 
   let api = null;
+  let root = null;
+  let view = "select"; // "select" | "play"
+  let level = 0;       // current level index (0-based)
+
+  let board = null;     // .mem-grid element
+  let boardArea = null; // .arcade-board-area wrapper
+  let streakEl = null;  // live combo-streak label
+
   let timer = null;
   let startTime = 0;
   let moves = 0;
   let matched = 0;
+  let pairs = 8;
+  let streak = 0;
   let busy = false;
   let first = null;
-  let root = null;
   let timeouts = [];
+  let resizeHandler = null;
 
   function setTO(fn, ms) {
     const id = setTimeout(() => {
@@ -101,35 +140,64 @@
     timeouts = [];
   }
 
-  function updateHeader() {
-    const secs = Math.floor((Date.now() - startTime) / 1000);
+  function fmtTime(secs) {
     const mm = String(Math.floor(secs / 60)).padStart(1, "0");
     const ss = String(secs % 60).padStart(2, "0");
-    api.setScore(`${api.t("moves_label")}: ${moves} • ${mm}:${ss}`);
+    return `${mm}:${ss}`;
   }
 
+  function updateHeader() {
+    const secs = Math.floor((Date.now() - startTime) / 1000);
+    api.setScore(`${api.t("moves_label")}: ${moves} • ${fmtTime(secs)}`);
+  }
+
+  function updateStreak() {
+    if (!streakEl) return;
+    streakEl.textContent = streak >= 2 ? tt("streak", { n: streak }) : "";
+  }
+
+  function totalStars() {
+    const progress = ArcadeUI.loadProgress("memory", TOTAL_LEVELS);
+    return progress.stars.reduce((a, b) => a + b, 0);
+  }
+
+  function computeStars(lvl, mvs) {
+    const p = LEVEL_PAIRS[lvl];
+    if (lvl === TOTAL_LEVELS - 1) {
+      // L8 reuses L7's grid but demands a tighter solve to feel like the
+      // toughest level.
+      if (mvs <= Math.ceil(p * 1.3)) return 3;
+      if (mvs <= p * 1.8) return 2;
+      return 1;
+    }
+    if (mvs <= Math.ceil(p * 1.5)) return 3;
+    if (mvs <= p * 2) return 2;
+    return 1;
+  }
+
+  // ---- Game setup ----
   function newGame() {
     moves = 0;
     matched = 0;
+    streak = 0;
     busy = true; // blocked during peek
     first = null;
     if (timer) clearInterval(timer);
     clearAllTimeouts();
 
-    const pairs = 8;
+    pairs = LEVEL_PAIRS[level];
+    const cols = LEVEL_COLS[level];
+    const rows = LEVEL_ROWS[level];
     const faces = shuffle(FACES.slice()).slice(0, pairs);
     const deck = shuffle(faces.concat(faces));
 
-    root.innerHTML = "";
-
-    const hint = document.createElement("div");
-    hint.className = "mem-hint";
-    hint.textContent = tt("memorize");
-    root.appendChild(hint);
-
-    const grid = document.createElement("div");
-    grid.className = "mem-grid";
-    grid.style.gridTemplateColumns = "repeat(4, 1fr)";
+    board.innerHTML = "";
+    board.className = "mem-grid";
+    if (cols >= 6) board.classList.add("mem-fonts-3");
+    else if (cols >= 5) board.classList.add("mem-fonts-2");
+    else if (cols <= 2) board.classList.add("mem-fonts-1");
+    board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    board.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
     deck.forEach((face) => {
       const card = document.createElement("button");
@@ -142,16 +210,16 @@
         </div>
       `;
       card.addEventListener("click", () => onFlip(card));
-      grid.appendChild(card);
+      board.appendChild(card);
     });
-    root.appendChild(grid);
+
+    if (boardArea) ArcadeUI.fitGrid(boardArea, board, cols, rows, 10);
+    updateStreak();
 
     // Peek: show all faces briefly, then flip down and start the clock.
     setTO(() => {
-      grid.querySelectorAll(".mem-card").forEach((c) => c.classList.remove("peeking"));
-      hint.style.opacity = "0";
+      board.querySelectorAll(".mem-card").forEach((c) => c.classList.remove("peeking"));
       setTO(() => {
-        if (hint.parentNode) hint.remove();
         busy = false;
         startTime = Date.now();
         timer = setInterval(updateHeader, 1000);
@@ -180,9 +248,13 @@
       card.classList.add("matched");
       first = null;
       matched += 1;
+      streak += 1;
+      updateStreak();
       if (api.soundOn()) api.tone(520, 0.08);
-      if (matched === 8) win();
+      if (matched === pairs) win();
     } else {
+      streak = 0;
+      updateStreak();
       busy = true;
       const a = first;
       const b = card;
@@ -213,36 +285,159 @@
   }
 
   function win() {
-    if (timer) clearInterval(timer);
+    if (timer) { clearInterval(timer); timer = null; }
     api.vibrate([20, 40, 20]);
     if (api.soundOn()) {
       api.tone(660, 0.12);
       setTO(() => api.tone(880, 0.18), 110);
     }
     const secs = Math.floor((Date.now() - startTime) / 1000);
-    // Higher is better: reward few moves and quick solves.
-    const score = Math.max(50, 1200 - moves * 25 - secs * 6);
-    const best = api.saveBest(score);
+    const stars = computeStars(level, moves);
+    ArcadeUI.recordResult("memory", TOTAL_LEVELS, level, stars);
+    api.saveBest(totalStars());
 
     setTO(() => {
-      root.innerHTML = "";
-      const box = document.createElement("div");
-      box.className = "mem-win";
-      box.innerHTML = `
-        <h3>${api.t("you_win")}</h3>
-        <p>${api.t("score_label")}: ${score} • ${api.t("best_score", { score: best })}</p>
-      `;
-      const again = document.createElement("button");
-      again.className = "play-btn";
-      again.textContent = api.t("new_game");
-      again.addEventListener("click", () => {
-        api.playClick();
-        newGame();
-      });
-      box.appendChild(again);
-      root.appendChild(box);
-      spawnConfetti(box);
+      showResult(stars, secs);
     }, 700);
+  }
+
+  function showResult(stars, secs) {
+    if (!boardArea) return;
+    const ov = document.createElement("div");
+    ov.className = "mem-overlay";
+
+    const h = document.createElement("h3");
+    h.textContent = stars > 0 ? ArcadeUI.t("level_complete") : ArcadeUI.t("level_failed");
+
+    const starRow = document.createElement("div");
+    ArcadeUI.renderStars(starRow, stars);
+
+    const p1 = document.createElement("p");
+    p1.textContent = `${api.t("moves_label")}: ${moves} • ${fmtTime(secs)}`;
+
+    const actions = document.createElement("div");
+    actions.className = "arcade-result-actions";
+
+    const retryBtn = document.createElement("button");
+    retryBtn.className = "arcade-btn";
+    retryBtn.textContent = ArcadeUI.t("retry");
+    retryBtn.addEventListener("click", () => { api.playClick(); startLevel(level); });
+    actions.appendChild(retryBtn);
+
+    if (stars > 0 && level < TOTAL_LEVELS - 1) {
+      const nextBtn = document.createElement("button");
+      nextBtn.className = "arcade-btn primary";
+      nextBtn.textContent = ArcadeUI.t("next_level");
+      nextBtn.addEventListener("click", () => { api.playClick(); startLevel(level + 1); });
+      actions.appendChild(nextBtn);
+    }
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+    actions.appendChild(levelsBtn);
+
+    ov.appendChild(h);
+    ov.appendChild(starRow);
+    ov.appendChild(p1);
+    ov.appendChild(actions);
+    boardArea.appendChild(ov);
+
+    if (stars > 0) spawnConfetti(ov);
+  }
+
+  // Re-fit the board to the current area (orientation / size change).
+  function reflow() {
+    if (!board || !boardArea || view !== "play") return;
+    ArcadeUI.fitGrid(boardArea, board, LEVEL_COLS[level], LEVEL_ROWS[level], 10);
+  }
+
+  // ---- Level select ----
+  function showLevelSelect() {
+    view = "select";
+    if (timer) { clearInterval(timer); timer = null; }
+    clearAllTimeouts();
+    busy = true;
+    board = null;
+    boardArea = null;
+    streakEl = null;
+    root.innerHTML = "";
+
+    const wrap = document.createElement("div");
+    wrap.className = "arcade-level-select";
+
+    const hint = document.createElement("p");
+    hint.className = "arcade-level-hint";
+    hint.textContent = ArcadeUI.t("tap_to_play");
+    wrap.appendChild(hint);
+
+    const gridHost = document.createElement("div");
+    wrap.appendChild(gridHost);
+    root.appendChild(wrap);
+
+    const progress = ArcadeUI.loadProgress("memory", TOTAL_LEVELS);
+    ArcadeUI.renderLevelGrid(gridHost, {
+      total: TOTAL_LEVELS,
+      progress,
+      onSelect: (i) => startLevel(i),
+    });
+
+    api.setScore("");
+  }
+
+  // ---- Play view ----
+  function startLevel(i) {
+    level = Math.max(0, Math.min(i, TOTAL_LEVELS - 1));
+    view = "play";
+    buildPlayUI();
+    newGame();
+  }
+
+  function buildPlayUI() {
+    root.innerHTML = "";
+
+    const wrap = document.createElement("div");
+    wrap.className = "mem-wrap";
+
+    const bar = document.createElement("div");
+    bar.className = "mem-bar";
+
+    const info = document.createElement("div");
+    info.className = "mem-info";
+    const levelLabel = document.createElement("div");
+    levelLabel.className = "mem-level-label";
+    levelLabel.textContent = ArcadeUI.t("level_n", { n: level + 1 });
+    streakEl = document.createElement("div");
+    streakEl.className = "mem-streak";
+    info.appendChild(levelLabel);
+    info.appendChild(streakEl);
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-levels-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+
+    bar.appendChild(info);
+    bar.appendChild(levelsBtn);
+
+    const hint = document.createElement("div");
+    hint.className = "mem-hint";
+    hint.textContent = tt("memorize");
+    setTO(() => { hint.style.opacity = "0"; }, 1000);
+    setTO(() => { if (hint.parentNode) hint.remove(); }, 1320);
+
+    boardArea = document.createElement("div");
+    boardArea.className = "arcade-board-area";
+
+    board = document.createElement("div");
+    board.className = "mem-grid";
+    boardArea.appendChild(board);
+
+    wrap.appendChild(bar);
+    wrap.appendChild(hint);
+    wrap.appendChild(boardArea);
+    root.appendChild(wrap);
   }
 
   window.ARCADE_GAMES.push({
@@ -255,12 +450,29 @@
       injectStyle();
       api = a;
       root = rootEl;
-      newGame();
+      root.innerHTML = "";
+      view = "select";
+
+      resizeHandler = () => { if (view === "play") reflow(); };
+      window.addEventListener("resize", resizeHandler);
+
+      showLevelSelect();
     },
     unmount() {
+      if (resizeHandler) window.removeEventListener("resize", resizeHandler);
+      resizeHandler = null;
       if (timer) clearInterval(timer);
       timer = null;
       clearAllTimeouts();
+      board = null;
+      boardArea = null;
+      streakEl = null;
+      root = null;
+      api = null;
+      view = "select";
+      level = 0;
+      first = null;
+      busy = false;
     },
   });
 })();

@@ -1,23 +1,31 @@
 // Block Blast — drag polyomino pieces onto an 8x8 grid; fill rows/columns to
-// clear them. Self-contained arcade module; see js/arcade.js for the host
-// contract.
+// clear them. Knot-Escape-style level system: each level is a target-score
+// challenge with a placement-move limit. Self-contained arcade module; see
+// js/arcade.js for the host contract.
 window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 (function () {
   const SIZE = 8;
   const TRAY = 3;
   const STYLE_ID = "blocks-game-style";
+  const TOTAL_LEVELS = 8;
+  const MOVE_LIMIT = 20; // placements allowed per level attempt
+  // Target score per level (0-indexed). Tuned so a greedy-but-imperfect
+  // playtest (see /tmp/blocks-playtest.js) lands ~1-2 stars on level 1.
+  const TARGET_SCORE = [150, 300, 450, 600, 750, 900, 1050, 1200];
 
   // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const LOCAL = {
-    en: { hint: "Drag pieces to fill rows & columns", combo: "Combo x{n}!" },
-    tr: { hint: "Parçaları sürükle, satır ve sütunları doldur", combo: "Kombo x{n}!" },
+    en: { combo: "Combo x{n}!", target_hint: "Target: {n}" },
+    tr: { combo: "Kombo x{n}!", target_hint: "Hedef: {n}" },
   };
   function lang() {
     const l = (document.documentElement.lang || "en").slice(0, 2);
     return LOCAL[l] ? l : "en";
   }
-  function lt(key) {
-    return (LOCAL[lang()] || LOCAL.en)[key] || LOCAL.en[key] || key;
+  function lt(key, vars) {
+    let s = (LOCAL[lang()] || LOCAL.en)[key] || LOCAL.en[key] || key;
+    if (vars) for (const k in vars) s = s.replace("{" + k + "}", vars[k]);
+    return s;
   }
 
   // Pleasant fixed piece colors.
@@ -71,19 +79,17 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     const s = document.createElement("style");
     s.id = STYLE_ID;
     s.textContent = `
-      .game-blocks { align-items:center; justify-content:flex-start; gap:14px;
-        padding:14px; box-sizing:border-box; }
-      .blocks-wrap { display:flex; flex-direction:column; align-items:center; gap:14px;
-        width:100%; max-width:340px; position:relative; }
+      .game-blocks { padding:0; box-sizing:border-box; }
+      .blocks-wrap { display:flex; flex-direction:column; min-height:0; width:100%; height:100%;
+        gap:10px; padding:14px; box-sizing:border-box; position:relative; }
       .blocks-bar { display:flex; align-items:center; justify-content:space-between;
-        width:100%; gap:10px; }
-      .blocks-hint { color:var(--muted); font-size:12.5px; line-height:1.3; flex:1; }
-      .blocks-new { border:none; cursor:pointer; border-radius:12px; padding:9px 14px;
-        font-size:14px; font-weight:600; color:#fff; background:var(--accent-deep);
-        box-shadow:0 3px 8px rgba(60,45,20,.18); transition:transform .12s var(--ease-out);
-        white-space:nowrap; }
-      .blocks-new:active { transform:scale(.94); }
-      .blocks-board { position:relative; width:100%; aspect-ratio:1; border-radius:16px;
+        width:100%; gap:10px; flex-wrap:wrap; }
+      .blocks-info { display:flex; flex-direction:column; gap:2px; }
+      .blocks-level-label { font-size:16px; font-weight:800; color:var(--accent-deep); }
+      .blocks-target { color:var(--muted); font-size:12px; }
+      .blocks-moves { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+      .blocks-moves strong { color:var(--ink); font-weight:800; }
+      .blocks-board { position:relative; border-radius:16px;
         background:var(--panel); padding:8px; box-sizing:border-box; touch-action:none;
         box-shadow:inset 0 2px 8px rgba(60,45,20,.10); user-select:none;
         -webkit-user-select:none; display:grid; gap:3px; }
@@ -102,9 +108,9 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         60% { transform:scale(1.12); }
         100% { transform:scale(1); } }
       .blocks-tray { display:flex; align-items:flex-end; justify-content:space-around;
-        width:100%; min-height:84px; gap:8px; touch-action:none; }
+        margin:0 auto; gap:8px; touch-action:none; flex-shrink:0; }
       .blocks-slot { flex:1; display:flex; align-items:center; justify-content:center;
-        min-height:80px; }
+        min-height:46px; }
       .blocks-piece { display:grid; gap:3px; cursor:grab; touch-action:none;
         transition:transform .14s var(--ease-spring), opacity .14s var(--ease-out); }
       .blocks-piece.empty { opacity:0; pointer-events:none; }
@@ -116,14 +122,14 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         gap:3px; left:0; top:0; will-change:transform; }
       .blocks-drag .blocks-pcell { box-shadow:inset 0 -2px 4px rgba(0,0,0,.2),
         inset 0 2px 3px rgba(255,255,255,.25), 0 4px 10px rgba(0,0,0,.25); }
-      .blocks-overlay { position:absolute; inset:0; border-radius:16px; display:flex;
-        flex-direction:column; align-items:center; justify-content:center; gap:12px;
+      .blocks-level-overlay { position:absolute; inset:0; border-radius:16px; display:flex;
+        flex-direction:column; align-items:center; justify-content:center; gap:10px;
         text-align:center; padding:18px; box-sizing:border-box;
         background:rgba(28,24,18,.80); color:#fff; z-index:60;
         animation:blocks-fade .25s var(--ease-out); }
-      .blocks-overlay h3 { font-size:24px; font-weight:800; margin:0; }
-      .blocks-overlay p { font-size:15px; margin:0; opacity:.92; }
-      .blocks-overlay .blocks-new { background:var(--accent); }
+      .blocks-level-overlay h3 { font-size:24px; font-weight:800; margin:0; }
+      .blocks-level-overlay p { font-size:15px; margin:0; opacity:.92; }
+      .blocks-level-overlay .star-row { color:rgba(255,255,255,.3); }
       @keyframes blocks-fade { from { opacity:0; } to { opacity:1; } }
       .blocks-combo { position:absolute; left:50%; top:30%; transform:translate(-50%,-50%);
         font-size:30px; font-weight:900; color:var(--accent-deep); pointer-events:none;
@@ -148,8 +154,9 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   let root = null;
   let wrap = null;
   let board = null;        // grid container element
-  let cellEls = [];        // SIZE*SIZE cell elements (row-major)
+  let boardArea = null;    // flex area the board is sized to fill
   let trayEl = null;       // tray container
+  let cellEls = [];        // SIZE*SIZE cell elements (row-major)
   let slotEls = [];        // TRAY slot elements
   let grid = [];           // SIZE x SIZE booleans (filled)
   let tray = [];           // TRAY entries: { shape, color } or null
@@ -159,17 +166,36 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
   let combo = 0;          // consecutive clear streak
   let timers = [];        // tracked setTimeout ids for cleanup on unmount
 
+  // level-system state
+  let view = "select";    // "select" | "play"
+  let level = 0;           // current level index (0-based)
+  let movesLeft = MOVE_LIMIT;
+  let levelEnded = false;  // guard against double-ending a level
+  let movesLabel = null;   // span showing the live "moves left" count
+  let resizeHandler = null;
+
   // drag state
   let drag = null;         // { slot, shape, color, ghost, cellPx, gap, lastValid }
   let pmHandler = null;
   let puHandler = null;
 
+  function levelTarget() {
+    return TARGET_SCORE[level] != null ? TARGET_SCORE[level] : TARGET_SCORE[TARGET_SCORE.length - 1];
+  }
+
+  function computeStars(finalScore, target) {
+    if (finalScore >= target * 1.5) return 3;
+    if (finalScore >= target) return 2;
+    if (finalScore >= target * 0.6) return 1;
+    return 0;
+  }
+
   function updateHeader() {
-    const best = api.best();
-    const bestVal = best == null ? 0 : best;
-    api.setScore(
-      `${api.t("score_label")}: ${score} • ${api.t("best_score", { score: bestVal })}`
-    );
+    api.setScore(`${api.t("score_label")}: ${score}`);
+  }
+
+  function updateMoves() {
+    if (movesLabel) movesLabel.innerHTML = `${ArcadeUI.t("moves_left")}: <strong>${movesLeft}</strong>`;
   }
 
   // ----- board geometry -----
@@ -290,7 +316,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       slot.innerHTML = "";
       const entry = tray[i];
       if (!entry) continue;
-      const piece = makePieceEl(entry, false);
+      const piece = makePieceEl(entry);
       piece.dataset.slot = i;
       if (!canPlaceAnywhere(entry.shape)) piece.classList.add("unplayable");
       piece.addEventListener("pointerdown", onPiecePointerDown);
@@ -298,15 +324,15 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     }
   }
 
-  // Tray piece sized to fit a small slot.
-  function makePieceEl(entry, big) {
+  // Tray piece sized proportionally to the current board cell size.
+  function makePieceEl(entry) {
     const { shape, color } = entry;
     const b = shapeBounds(shape);
     const el = document.createElement("div");
     el.className = "blocks-piece";
     el.style.gridTemplateColumns = `repeat(${b.cols}, 1fr)`;
     el.style.gridTemplateRows = `repeat(${b.rows}, 1fr)`;
-    const px = big ? bigCellPx() : trayCellPx(b);
+    const px = trayCellPx(b);
     el.style.gap = "3px";
     const occ = {};
     for (const [r, c] of shape) occ[r + "," + c] = true;
@@ -327,17 +353,17 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     return el;
   }
 
+  // Scales tray piece cells relative to the live board cell size, so the
+  // tray stays visually proportional whether the board is small or fills
+  // the whole screen.
   function trayCellPx(b) {
     const maxDim = Math.max(b.rows, b.cols);
-    // slot ~ 100px wide on 340px board; keep tray pieces compact
-    if (maxDim >= 4) return 15;
-    if (maxDim === 3) return 17;
-    return 20;
-  }
-
-  function bigCellPx() {
-    const m = cellMetrics();
-    return m.cell;
+    const cell = board ? cellMetrics().cell : 38;
+    let factor;
+    if (maxDim >= 4) factor = 0.4;
+    else if (maxDim === 3) factor = 0.46;
+    else factor = 0.55;
+    return Math.max(10, Math.round(cell * factor));
   }
 
   // ----- drag handling -----
@@ -500,6 +526,8 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     const anchorC = sumC / cellsPlaced;
     tray[slotIdx] = null;
     score += cellsPlaced;
+    movesLeft = Math.max(0, movesLeft - 1);
+    updateMoves();
 
     api.playClick();
     api.vibrate(8);
@@ -556,11 +584,10 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     }
 
     updateHeader();
-    api.saveBest(score);
 
-    // game over check
-    if (!anyMoveLeft()) {
-      gameOver();
+    // level-end checks: out of moves, or no placement possible for any tray piece
+    if (movesLeft <= 0 || !anyMoveLeft()) {
+      endLevel();
     }
     return true;
   }
@@ -608,7 +635,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       const n2 = totalLines > 1 ? totalLines : combo;
       const combEl = document.createElement("div");
       combEl.className = "blocks-combo";
-      combEl.textContent = lt("combo").replace("{n}", n2);
+      combEl.textContent = lt("combo", { n: n2 });
       wrap.appendChild(combEl);
       trackTimeout(() => { if (combEl.parentNode) combEl.parentNode.removeChild(combEl); }, 800);
     }
@@ -627,48 +654,87 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         renderGrid();
         renderTray();
         updateHeader();
+        // a line clear can reduce the board enough to free up a move that
+        // didn't exist before this clear; only end the level here if we're
+        // also out of moves (the out-of-placements case is already handled
+        // by placePiece's check before the clear animation started).
+        if (movesLeft <= 0 && !levelEnded) endLevel();
       }, 260 + (SIZE * 2 - 2) * 12);
     });
   }
 
-  function gameOver() {
+  // ----- level lifecycle -----
+  function endLevel() {
+    if (levelEnded) return;
+    levelEnded = true;
     over = true;
-    const best = api.saveBest(score);
     api.vibrate([30, 60, 30]);
     if (api.soundOn()) {
       api.tone(330, 0.14, "sawtooth");
       setTimeout(() => api.tone(196, 0.22, "sawtooth"), 130);
     }
+
+    const target = levelTarget();
+    const stars = computeStars(score, target);
+    const progress = ArcadeUI.recordResult("blocks", TOTAL_LEVELS, level, stars);
+    const totalStars = progress.stars.reduce((a, b) => a + b, 0);
+    api.saveBest(totalStars);
+
     const ov = document.createElement("div");
-    ov.className = "blocks-overlay";
+    ov.className = "blocks-level-overlay";
+
     const h = document.createElement("h3");
-    h.textContent = api.t("game_over");
+    h.textContent = stars > 0 ? ArcadeUI.t("level_complete") : ArcadeUI.t("level_failed");
+
+    const starRow = document.createElement("div");
+    ArcadeUI.renderStars(starRow, stars);
+
     const p1 = document.createElement("p");
-    p1.textContent = `${api.t("score_label")}: ${score}`;
-    const p2 = document.createElement("p");
-    p2.textContent = api.t("best_score", { score: best == null ? score : best });
-    const btn = document.createElement("button");
-    btn.className = "blocks-new";
-    btn.textContent = api.t("new_game");
-    btn.addEventListener("click", () => {
-      api.playClick();
-      newGame();
-    });
+    p1.textContent = `${api.t("score_label")}: ${score} / ${target}`;
+
+    const actions = document.createElement("div");
+    actions.className = "arcade-result-actions";
+
+    const retryBtn = document.createElement("button");
+    retryBtn.className = "arcade-btn";
+    retryBtn.textContent = ArcadeUI.t("retry");
+    retryBtn.addEventListener("click", () => { api.playClick(); startLevel(level); });
+    actions.appendChild(retryBtn);
+
+    if (stars > 0 && level < TOTAL_LEVELS - 1) {
+      const nextBtn = document.createElement("button");
+      nextBtn.className = "arcade-btn primary";
+      nextBtn.textContent = ArcadeUI.t("next_level");
+      nextBtn.addEventListener("click", () => { api.playClick(); startLevel(level + 1); });
+      actions.appendChild(nextBtn);
+    }
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+    actions.appendChild(levelsBtn);
+
     ov.appendChild(h);
+    ov.appendChild(starRow);
     ov.appendChild(p1);
-    ov.appendChild(p2);
-    ov.appendChild(btn);
-    wrap.appendChild(ov);
+    ov.appendChild(actions);
+    root.appendChild(ov);
   }
 
   function newGame() {
     over = false;
+    levelEnded = false;
     score = 0;
     combo = 0;
+    movesLeft = MOVE_LIMIT;
     clearTimers();
-    // remove any stray popups/combo banners from a previous game
+    // remove any stray popups/combo banners/overlays from a previous game
     if (wrap) {
       wrap.querySelectorAll(".blocks-combo, .blocks-popup").forEach((el) => el.remove());
+    }
+    if (root) {
+      root.querySelectorAll(".blocks-level-overlay").forEach((el) => el.remove());
     }
     grid = [];
     for (let r = 0; r < SIZE; r++) {
@@ -677,12 +743,128 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       grid.push(row);
     }
     refillTray();
-    // remove any overlay
-    const ov = wrap.querySelector(".blocks-overlay");
-    if (ov) ov.parentNode.removeChild(ov);
     renderGrid();
     renderTray();
     updateHeader();
+    updateMoves();
+  }
+
+  // ----- level select -----
+  function showLevelSelect() {
+    view = "select";
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    teardownDrag();
+    clearTimers();
+    board = null;
+    boardArea = null;
+    trayEl = null;
+    slotEls = [];
+    cellEls = [];
+    movesLabel = null;
+    wrap = null;
+    root.innerHTML = "";
+
+    const sel = document.createElement("div");
+    sel.className = "arcade-level-select";
+
+    const hint = document.createElement("p");
+    hint.className = "arcade-level-hint";
+    hint.textContent = ArcadeUI.t("tap_to_play");
+    sel.appendChild(hint);
+
+    const gridHost = document.createElement("div");
+    sel.appendChild(gridHost);
+    root.appendChild(sel);
+
+    const progress = ArcadeUI.loadProgress("blocks", TOTAL_LEVELS);
+    ArcadeUI.renderLevelGrid(gridHost, {
+      total: TOTAL_LEVELS,
+      progress,
+      onSelect: (i) => startLevel(i),
+    });
+
+    api.setScore("");
+  }
+
+  // ----- play view -----
+  function startLevel(i) {
+    level = Math.max(0, Math.min(i, TOTAL_LEVELS - 1));
+    view = "play";
+    buildPlayUI();
+  }
+
+  function buildPlayUI() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    teardownDrag();
+    root.innerHTML = "";
+
+    wrap = document.createElement("div");
+    wrap.className = "blocks-wrap";
+
+    const bar = document.createElement("div");
+    bar.className = "blocks-bar";
+
+    const info = document.createElement("div");
+    info.className = "blocks-info";
+    const levelLabel = document.createElement("div");
+    levelLabel.className = "blocks-level-label";
+    levelLabel.textContent = ArcadeUI.t("level_n", { n: level + 1 });
+    const targetLabel = document.createElement("div");
+    targetLabel.className = "blocks-target";
+    targetLabel.textContent = lt("target_hint", { n: levelTarget() });
+    movesLabel = document.createElement("div");
+    movesLabel.className = "blocks-moves";
+    info.appendChild(levelLabel);
+    info.appendChild(targetLabel);
+    info.appendChild(movesLabel);
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-levels-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+
+    bar.appendChild(info);
+    bar.appendChild(levelsBtn);
+
+    boardArea = document.createElement("div");
+    boardArea.className = "arcade-board-area";
+
+    board = document.createElement("div");
+    board.className = "blocks-board";
+    boardArea.appendChild(board);
+
+    trayEl = document.createElement("div");
+    trayEl.className = "blocks-tray";
+    slotEls = [];
+    for (let i = 0; i < TRAY; i++) {
+      const slot = document.createElement("div");
+      slot.className = "blocks-slot";
+      trayEl.appendChild(slot);
+      slotEls.push(slot);
+    }
+
+    wrap.appendChild(bar);
+    wrap.appendChild(boardArea);
+    wrap.appendChild(trayEl);
+    root.appendChild(wrap);
+
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      buildBoard();
+      fitBoard();
+      newGame();
+    });
+  }
+
+  // Size the board to fill .arcade-board-area, then size the tray to match
+  // the board's width so it sits proportionally beneath it.
+  function fitBoard() {
+    if (!board || !boardArea) return;
+    const size = ArcadeUI.fitSquare(boardArea, board);
+    if (trayEl && size) trayEl.style.width = size + "px";
+    if (board.children.length) renderTray(); // re-scale tray piece cells
   }
 
   window.ARCADE_GAMES.push({
@@ -696,62 +878,34 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       api = a;
       root = rootEl;
       root.innerHTML = "";
+      view = "select";
 
-      wrap = document.createElement("div");
-      wrap.className = "blocks-wrap";
+      resizeHandler = () => { if (view === "play") fitBoard(); };
+      window.addEventListener("resize", resizeHandler);
 
-      const bar = document.createElement("div");
-      bar.className = "blocks-bar";
-      const hint = document.createElement("div");
-      hint.className = "blocks-hint";
-      hint.textContent = lt("hint");
-      const newBtn = document.createElement("button");
-      newBtn.className = "blocks-new";
-      newBtn.textContent = api.t("new_game");
-      newBtn.addEventListener("click", () => {
-        api.playClick();
-        newGame();
-      });
-      bar.appendChild(hint);
-      bar.appendChild(newBtn);
-
-      board = document.createElement("div");
-      board.className = "blocks-board";
-
-      trayEl = document.createElement("div");
-      trayEl.className = "blocks-tray";
-      slotEls = [];
-      for (let i = 0; i < TRAY; i++) {
-        const slot = document.createElement("div");
-        slot.className = "blocks-slot";
-        trayEl.appendChild(slot);
-        slotEls.push(slot);
-      }
-
-      wrap.appendChild(bar);
-      wrap.appendChild(board);
-      wrap.appendChild(trayEl);
-      root.appendChild(wrap);
-
-      raf = requestAnimationFrame(() => {
-        buildBoard();
-        newGame();
-      });
+      showLevelSelect();
     },
     unmount() {
       teardownDrag();
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
       clearTimers();
+      if (resizeHandler) window.removeEventListener("resize", resizeHandler);
+      resizeHandler = null;
       board = null;
+      boardArea = null;
       trayEl = null;
       slotEls = [];
       cellEls = [];
+      movesLabel = null;
       wrap = null;
       root = null;
       api = null;
       over = false;
+      levelEnded = false;
       combo = 0;
+      view = "select";
+      level = 0;
     },
   });
 })();

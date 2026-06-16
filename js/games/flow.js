@@ -1,22 +1,33 @@
 // Color Connect (Flow Free style) — drag between matching dots to draw pipes;
 // fill every cell and connect every pair to solve. Self-contained arcade module;
 // see js/arcade.js for the host contract.
+//
+// Knot-Escape-style level system: 8 levels (square grids, sizes 5-8), level
+// select grid with stars/locks (via ArcadeUI), and a per-level result overlay.
+// Star rating rewards clean solves: redrawing a color's path (restarting it
+// from an endpoint after it was already complete or partially drawn) costs
+// stars — 3★ for a flawless run with zero redraws, 2★ for up to two, 1★
+// otherwise.
+window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 (function () {
-  window.ARCADE_GAMES = window.ARCADE_GAMES || [];
+  const TOTAL_LEVELS = 8;
+  const STYLE_ID = "flow-game-style";
 
   // --- Local i18n fallback (English + Turkish; cannot edit i18n.js) ---
   const STR = {
     en: {
       connect: "Connect all pairs and fill every cell",
-      solved_all: "All puzzles complete!",
-      puzzle: "Puzzle",
       reset: "Reset",
+      redraws: "Redraws",
+      flawless: "Flawless solve — every path drawn once!",
+      all_levels_done: "All levels complete — nice work!",
     },
     tr: {
       connect: "Tüm çiftleri bağla ve her hücreyi doldur",
-      solved_all: "Tüm bulmacalar tamam!",
-      puzzle: "Bulmaca",
       reset: "Sıfırla",
+      redraws: "Yeniden çizim",
+      flawless: "Kusursuz çözüm — her yol tek seferde çizildi!",
+      all_levels_done: "Tüm seviyeler tamam — harika iş!",
     },
   };
   function lang() {
@@ -70,42 +81,49 @@
       { a: [4, 6], b: [3, 2] }, { a: [2, 2], b: [1, 4] }, { a: [1, 5], b: [2, 3] },
       { a: [3, 3], b: [5, 3] },
     ] },
+    { size: 7, endpoints: [
+      { a: [2, 6], b: [5, 6] }, { a: [6, 6], b: [5, 2] }, { a: [5, 3], b: [4, 2] },
+      { a: [4, 1], b: [1, 0] }, { a: [0, 0], b: [2, 1] }, { a: [3, 1], b: [0, 2] },
+      { a: [0, 3], b: [1, 6] }, { a: [1, 5], b: [3, 5] },
+    ] },
+    { size: 8, endpoints: [
+      { a: [1, 7], b: [3, 7] }, { a: [4, 7], b: [3, 6] }, { a: [3, 5], b: [7, 1] },
+      { a: [7, 0], b: [2, 0] }, { a: [1, 0], b: [5, 1] }, { a: [6, 1], b: [0, 2] },
+      { a: [0, 3], b: [1, 5] }, { a: [1, 4], b: [0, 5] },
+    ] },
   ];
 
-  const STYLE_ID = "flow-game-style";
   function injectStyle() {
     if (document.getElementById(STYLE_ID)) return;
     const s = document.createElement("style");
     s.id = STYLE_ID;
     s.textContent = `
-      .game-flow { display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-        gap:14px; padding:16px 14px; position:relative; }
-      .flow-hint { color:var(--muted); font-size:13px; text-align:center; line-height:1.3;
-        max-width:320px; }
-      .flow-board-wrap { position:relative; width:100%; max-width:340px; display:flex;
-        align-items:center; justify-content:center; }
-      .flow-board { position:relative; width:100%; aspect-ratio:1; background:var(--panel);
-        border-radius:16px; box-shadow:0 6px 18px rgba(40,30,15,.12); padding:8px;
-        box-sizing:border-box; touch-action:none; }
+      .flow-wrap { display:flex; flex-direction:column; min-height:0; flex:1; width:100%;
+        height:100%; gap:10px; padding:14px; box-sizing:border-box; }
+      .flow-bar { display:flex; align-items:center; justify-content:space-between; width:100%;
+        gap:10px; flex-wrap:wrap; }
+      .flow-info { display:flex; flex-direction:column; gap:2px; }
+      .flow-level-label { font-size:16px; font-weight:800; color:var(--accent-deep); }
+      .flow-hint { color:var(--muted); font-size:12px; line-height:1.3; max-width:320px; }
+      .flow-board { position:relative; background:var(--panel); border-radius:16px;
+        box-shadow:0 6px 18px rgba(40,30,15,.12); padding:8px; box-sizing:border-box;
+        touch-action:none; }
       .flow-grid { position:absolute; inset:8px; display:grid; }
-      .flow-cell { position:relative; box-sizing:border-box;
-        border:1px solid var(--divider); }
-      .flow-svg { position:absolute; inset:8px; width:calc(100% - 16px); height:calc(100% - 16px); pointer-events:none; }
+      .flow-cell { position:relative; box-sizing:border-box; border:1px solid var(--divider); }
+      .flow-svg { position:absolute; inset:8px; width:calc(100% - 16px); height:calc(100% - 16px);
+        pointer-events:none; }
       .flow-dot { position:absolute; border-radius:50%; transform:translate(-50%,-50%);
         z-index:3; pointer-events:none; box-shadow:0 1px 3px rgba(0,0,0,.3); }
       .flow-dot.done { box-shadow:0 0 0 3px rgba(255,255,255,.55), 0 1px 4px rgba(0,0,0,.35); }
-      .flow-actions { display:flex; gap:10px; align-items:center; }
-      .flow-btn { border:none; border-radius:12px; padding:9px 16px; font-size:14px;
-        font-weight:600; cursor:pointer; background:var(--accent-soft); color:var(--accent-deep);
-        transition:transform .12s var(--ease-out); }
-      .flow-btn:active { transform:scale(.94); }
-      .flow-progress { color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums; }
-      .flow-overlay { position:absolute; inset:0; background:rgba(0,0,0,.55);
-        backdrop-filter:blur(2px); display:flex; flex-direction:column; align-items:center;
-        justify-content:center; gap:16px; border-radius:0; z-index:10; text-align:center; padding:20px; }
-      .flow-overlay h3 { color:#fff; font-size:24px; margin:0; }
-      .flow-overlay p { color:rgba(255,255,255,.85); font-size:15px; margin:0; }
-      .flow-overlay .flow-btn { background:var(--accent); color:#fff; font-size:16px; padding:12px 22px; }
+      .flow-progress { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+      .flow-level-overlay { position:absolute; inset:0; border-radius:16px; display:flex;
+        flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center;
+        padding:18px; box-sizing:border-box; background:rgba(28,24,18,.78); color:#fff;
+        animation:flow-fade .25s var(--ease-out); z-index:8; }
+      .flow-level-overlay h3 { font-size:24px; font-weight:800; margin:0; }
+      .flow-level-overlay p { font-size:15px; margin:0; opacity:.9; }
+      .flow-level-overlay .star-row { color:rgba(255,255,255,.3); }
+      @keyframes flow-fade { from { opacity:0; } to { opacity:1; } }
     `;
     document.head.appendChild(s);
   }
@@ -113,6 +131,8 @@
   // --- module state ---
   let api = null;
   let root = null;
+  let view = "select"; // "select" | "play"
+  let level = 0;        // current level index (0-based)
   let puzzleIndex = 0;
   let size = 5;
   let endpoints = [];
@@ -120,18 +140,21 @@
   let cellOwner = [];
   // paths[color] = ordered array of [r,c] from endpoint a outward (may be partial)
   let paths = [];
+  let boardArea = null;
   let boardEl = null;
   let gridEl = null;
   let svgEl = null;
   let dotsLayer = null;
   let progressEl = null;
-  let overlayEl = null;
+  let resizeHandler = null;
 
   // drag state
   let dragColor = -1;
   let dragging = false;
   let pointerId = null;
   let cellPx = 0; // computed pixel size of a cell
+  let redraws = 0; // path redraws this attempt (used for star rating)
+  let solved = false;
 
   function key(r, c) { return r + "," + c; }
 
@@ -164,36 +187,148 @@
     endpointMap = buildEndpointMap();
     cellOwner = Array.from({ length: size }, () => Array(size).fill(-1));
     paths = endpoints.map(() => []);
+    redraws = 0;
+    solved = false;
     // endpoints occupy their cells
     endpoints.forEach((e, ci) => {
       cellOwner[e.a[0]][e.a[1]] = ci;
       cellOwner[e.b[0]][e.b[1]] = ci;
     });
-    render();
+    renderBoard();
     updateHeader();
   }
 
   function updateHeader() {
-    api.setScore(`${L("puzzle")} ${puzzleIndex + 1}/${PUZZLES.length}`);
+    api.setScore(L("redraws") + ": " + redraws);
   }
 
-  function render() {
+  // ---- Level select ----
+  function showLevelSelect() {
+    view = "select";
+    removeDocListeners();
+    dragging = false;
+    pointerId = null;
+    boardArea = null;
+    boardEl = gridEl = svgEl = dotsLayer = progressEl = null;
     root.innerHTML = "";
-    overlayEl = null;
-
-    const hint = document.createElement("div");
-    hint.className = "flow-hint";
-    hint.textContent = L("connect");
-    root.appendChild(hint);
 
     const wrap = document.createElement("div");
-    wrap.className = "flow-board-wrap";
+    wrap.className = "arcade-level-select";
+
+    const hint = document.createElement("p");
+    hint.className = "arcade-level-hint";
+    hint.textContent = ArcadeUI.t("tap_to_play");
+    wrap.appendChild(hint);
+
+    const gridHost = document.createElement("div");
+    wrap.appendChild(gridHost);
+    root.appendChild(wrap);
+
+    const progress = ArcadeUI.loadProgress("flow", TOTAL_LEVELS);
+    ArcadeUI.renderLevelGrid(gridHost, {
+      total: TOTAL_LEVELS,
+      progress,
+      onSelect: (i) => startLevel(i),
+    });
+
+    api.setScore("");
+  }
+
+  // ---- Play view ----
+  function startLevel(i) {
+    level = Math.max(0, Math.min(i, TOTAL_LEVELS - 1));
+    view = "play";
+    buildPlayUI();
+    loadPuzzle(level);
+  }
+
+  function buildPlayUI() {
+    root.innerHTML = "";
+
+    const wrap = document.createElement("div");
+    wrap.className = "flow-wrap";
+
+    const bar = document.createElement("div");
+    bar.className = "flow-bar";
+
+    const info = document.createElement("div");
+    info.className = "flow-info";
+    const levelLabel = document.createElement("div");
+    levelLabel.className = "flow-level-label";
+    levelLabel.textContent = ArcadeUI.t("level_n", { n: level + 1 });
+    const hintLabel = document.createElement("div");
+    hintLabel.className = "flow-hint";
+    hintLabel.textContent = L("connect");
+    info.appendChild(levelLabel);
+    info.appendChild(hintLabel);
+
+    const actions = document.createElement("div");
+    actions.className = "g2048-actions";
+    actions.style.display = "flex";
+    actions.style.alignItems = "center";
+    actions.style.gap = "8px";
+
+    const resetBtn = document.createElement("button");
+    resetBtn.className = "arcade-btn";
+    resetBtn.textContent = L("reset");
+    resetBtn.addEventListener("click", () => {
+      api.playClick();
+      loadPuzzle(puzzleIndex);
+    });
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-levels-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+
+    actions.appendChild(resetBtn);
+    actions.appendChild(levelsBtn);
+
+    bar.appendChild(info);
+    bar.appendChild(actions);
+
+    boardArea = document.createElement("div");
+    boardArea.className = "arcade-board-area";
 
     boardEl = document.createElement("div");
     boardEl.className = "flow-board";
 
     gridEl = document.createElement("div");
     gridEl.className = "flow-grid";
+
+    svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svgEl.setAttribute("class", "flow-svg");
+    svgEl.setAttribute("preserveAspectRatio", "none");
+    boardEl.appendChild(gridEl);
+    boardEl.appendChild(svgEl);
+
+    dotsLayer = document.createElement("div");
+    dotsLayer.style.position = "absolute";
+    dotsLayer.style.inset = "8px";
+    dotsLayer.style.pointerEvents = "none";
+    boardEl.appendChild(dotsLayer);
+
+    boardEl.addEventListener("pointerdown", onPointerDown);
+
+    boardArea.appendChild(boardEl);
+
+    const progressRow = document.createElement("div");
+    progressEl = document.createElement("span");
+    progressEl.className = "flow-progress";
+    progressRow.appendChild(progressEl);
+
+    wrap.appendChild(bar);
+    wrap.appendChild(boardArea);
+    wrap.appendChild(progressRow);
+    root.appendChild(wrap);
+
+    ArcadeUI.fitSquare(boardArea, boardEl);
+  }
+
+  // Rebuild the grid cells + size the board for the current puzzle, then draw.
+  function renderBoard() {
+    if (!boardEl) return;
+    gridEl.innerHTML = "";
     gridEl.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
     gridEl.style.gridTemplateRows = `repeat(${size}, 1fr)`;
     for (let r = 0; r < size; r++) {
@@ -205,38 +340,8 @@
         gridEl.appendChild(cell);
       }
     }
-    boardEl.appendChild(gridEl);
 
-    svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svgEl.setAttribute("class", "flow-svg");
-    svgEl.setAttribute("preserveAspectRatio", "none");
-    boardEl.appendChild(svgEl);
-
-    dotsLayer = document.createElement("div");
-    dotsLayer.style.position = "absolute";
-    dotsLayer.style.inset = "8px";
-    dotsLayer.style.pointerEvents = "none";
-    boardEl.appendChild(dotsLayer);
-
-    boardEl.addEventListener("pointerdown", onPointerDown);
-
-    wrap.appendChild(boardEl);
-    root.appendChild(wrap);
-
-    const actions = document.createElement("div");
-    actions.className = "flow-actions";
-    progressEl = document.createElement("span");
-    progressEl.className = "flow-progress";
-    const resetBtn = document.createElement("button");
-    resetBtn.className = "flow-btn";
-    resetBtn.textContent = L("reset");
-    resetBtn.addEventListener("click", () => {
-      api.playClick();
-      loadPuzzle(puzzleIndex);
-    });
-    actions.appendChild(progressEl);
-    actions.appendChild(resetBtn);
-    root.appendChild(actions);
+    ArcadeUI.fitSquare(boardArea, boardEl);
 
     // layout-dependent draw after a frame so sizes are known
     requestAnimationFrame(() => {
@@ -358,6 +463,7 @@
   }
 
   function onPointerDown(ev) {
+    if (view !== "play" || solved) return;
     boardMetrics();
     const cell = cellFromPoint(ev.clientX, ev.clientY);
     if (!cell) return;
@@ -366,7 +472,13 @@
 
     if (isEndpoint(r, c)) {
       startColor = endpointColor(r, c);
-      // starting from an endpoint resets that color's path entirely
+      // Starting fresh from an endpoint resets that color's path entirely.
+      // If the path already had length (complete or partially drawn), the
+      // player is redrawing this color's connection — count it.
+      if (paths[startColor].length > 1) {
+        redraws++;
+        updateHeader();
+      }
       clearColor(startColor);
       paths[startColor] = [[r, c]];
     } else if (cellOwner[r][c] !== -1) {
@@ -491,52 +603,89 @@
     onPuzzleSolved();
   }
 
+  function computeStars() {
+    if (redraws === 0) return 3;
+    if (redraws <= 2) return 2;
+    return 1;
+  }
+
   function onPuzzleSolved() {
+    if (solved) return;
+    solved = true;
     api.vibrate([20, 40, 20]);
     if (api.soundOn()) {
       api.tone(660, 0.1);
       setTimeout(() => api.tone(880, 0.12), 100);
       setTimeout(() => api.tone(990, 0.16), 220);
     }
-    // best = highest puzzle index reached (1-based); higher is better
-    api.saveBest(puzzleIndex + 1);
 
-    const last = puzzleIndex >= PUZZLES.length - 1;
-    if (last) {
-      api.saveBest(PUZZLES.length);
-      setTimeout(showAllComplete, 350);
-    } else {
-      setTimeout(() => loadPuzzle(puzzleIndex + 1), 600);
-    }
+    const stars = computeStars();
+    const progress = ArcadeUI.recordResult("flow", TOTAL_LEVELS, level, stars);
+    const totalStars = progress.stars.reduce((a, b) => a + b, 0);
+    api.saveBest(totalStars);
+
+    setTimeout(() => showResult(stars), 350);
   }
 
-  function showAllComplete() {
-    if (!boardEl) return;
+  function showResult(stars) {
+    if (!boardArea) return;
     const ov = document.createElement("div");
-    ov.className = "flow-overlay";
+    ov.className = "flow-level-overlay";
+
     const h = document.createElement("h3");
-    h.textContent = api.t("you_win");
-    const p = document.createElement("p");
-    p.textContent = L("solved_all");
-    const btn = document.createElement("button");
-    btn.className = "flow-btn";
-    btn.textContent = api.t("new_game");
-    btn.addEventListener("click", () => {
-      api.playClick();
-      loadPuzzle(0);
-    });
+    h.textContent = ArcadeUI.t("level_complete");
+
+    const starRow = document.createElement("div");
+    ArcadeUI.renderStars(starRow, stars);
+
+    const p1 = document.createElement("p");
+    p1.textContent = `${L("redraws")}: ${redraws}`;
+
+    const p2 = document.createElement("p");
+    if (redraws === 0) p2.textContent = L("flawless");
+    else if (level === TOTAL_LEVELS - 1) p2.textContent = L("all_levels_done");
+    else p2.textContent = "";
+
+    const actions = document.createElement("div");
+    actions.className = "arcade-result-actions";
+
+    const retryBtn = document.createElement("button");
+    retryBtn.className = "arcade-btn";
+    retryBtn.textContent = ArcadeUI.t("retry");
+    retryBtn.addEventListener("click", () => { api.playClick(); startLevel(level); });
+    actions.appendChild(retryBtn);
+
+    if (level < TOTAL_LEVELS - 1) {
+      const nextBtn = document.createElement("button");
+      nextBtn.className = "arcade-btn primary";
+      nextBtn.textContent = ArcadeUI.t("next_level");
+      nextBtn.addEventListener("click", () => { api.playClick(); startLevel(level + 1); });
+      actions.appendChild(nextBtn);
+    }
+
+    const levelsBtn = document.createElement("button");
+    levelsBtn.className = "arcade-btn";
+    levelsBtn.textContent = ArcadeUI.t("levels");
+    levelsBtn.addEventListener("click", () => { api.playClick(); showLevelSelect(); });
+    actions.appendChild(levelsBtn);
+
     ov.appendChild(h);
-    ov.appendChild(p);
-    ov.appendChild(btn);
-    boardEl.appendChild(ov);
-    overlayEl = ov;
+    ov.appendChild(starRow);
+    ov.appendChild(p1);
+    if (p2.textContent) ov.appendChild(p2);
+    ov.appendChild(actions);
+    boardArea.appendChild(ov);
   }
 
-  function onResize() {
-    if (!svgEl) return;
-    boardMetrics();
-    drawDots();
-    redrawPaths();
+  // Reposition the board without losing drawn paths (orientation / size change).
+  function reflow() {
+    if (!boardEl || !boardArea) return;
+    ArcadeUI.fitSquare(boardArea, boardEl);
+    requestAnimationFrame(() => {
+      drawDots();
+      redrawPaths();
+      updateProgress();
+    });
   }
 
   window.ARCADE_GAMES.push({
@@ -549,13 +698,21 @@
       injectStyle();
       api = a;
       root = rootEl;
+      view = "select";
+      level = 0;
       puzzleIndex = 0;
-      window.addEventListener("resize", onResize);
-      loadPuzzle(0);
+      solved = false;
+      redraws = 0;
+
+      resizeHandler = () => { if (view === "play") reflow(); };
+      window.addEventListener("resize", resizeHandler);
+
+      showLevelSelect();
     },
     unmount() {
       removeDocListeners();
-      window.removeEventListener("resize", onResize);
+      if (resizeHandler) window.removeEventListener("resize", resizeHandler);
+      resizeHandler = null;
       if (boardEl) {
         try { boardEl.removeEventListener("pointerdown", onPointerDown); } catch (e) {}
       }
@@ -563,7 +720,10 @@
       pointerId = null;
       api = null;
       root = null;
-      boardEl = gridEl = svgEl = dotsLayer = progressEl = overlayEl = null;
+      view = "select";
+      level = 0;
+      boardArea = null;
+      boardEl = gridEl = svgEl = dotsLayer = progressEl = null;
     },
   });
 })();
