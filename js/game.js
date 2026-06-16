@@ -101,9 +101,47 @@ const el = {
   tutorialText: document.getElementById("tutorial-text"),
   tutorialDots: document.getElementById("tutorial-dots"),
   btnTutorialNext: document.getElementById("btn-tutorial-next"),
+  continueSec: document.getElementById("continue-section"),
+  btnContinue: document.getElementById("btn-continue"),
+  continueArt: document.getElementById("continue-art"),
+  continueTitle: document.getElementById("continue-title"),
+  continueSub: document.getElementById("continue-sub"),
 };
 
-document.getElementById("btn-play").addEventListener("click", () => { playClick(); playLevel(state.level); });
+// --- Continue Playing card ---
+const LAST_PLAYED_KEY = "knot-last-played";
+function saveLastPlayed(data) {
+  try { localStorage.setItem(LAST_PLAYED_KEY, JSON.stringify(data)); } catch (e) {}
+}
+function updateContinueCard() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem(LAST_PLAYED_KEY) || ""); } catch (e) { data = null; }
+  if (!data || !el.continueSec) return;
+  el.continueArt.textContent = data.emoji || "🪢";
+  el.continueTitle.textContent = t(data.nameKey) || data.nameKey;
+  el.continueSub.textContent = data.sub || "";
+  const accent = data.accent || "#2bb3a3";
+  el.btnContinue.style.background = `linear-gradient(135deg, ${accent}, ${accent}bb)`;
+  el.btnContinue.style.boxShadow = `0 12px 26px ${accent}44`;
+  el.continueSec.classList.remove("hidden");
+  el.btnContinue.classList.remove("hidden");
+}
+el.btnContinue.addEventListener("click", () => {
+  playClick();
+  let data;
+  try { data = JSON.parse(localStorage.getItem(LAST_PLAYED_KEY) || ""); } catch (e) { return; }
+  if (!data) return;
+  if (data.id === "knot-escape") {
+    playLevel(state.level);
+  } else {
+    const game = (window.ARCADE_GAMES || []).find((g) => g.id === data.id);
+    if (game && typeof Arcade !== "undefined") Arcade.openGame(game);
+  }
+});
+// Expose save hook so arcade.js can record the last played mini-game.
+window._saveLastPlayedArcade = function (game) {
+  saveLastPlayed({ id: game.id, emoji: game.emoji, nameKey: game.nameKey, accent: game.accent || "#2bb3a3", sub: t(game.descKey) || "" });
+};
 document.getElementById("btn-back").addEventListener("click", () => { playClick(); showTab(state.returnTab); });
 document.getElementById("btn-restart").addEventListener("click", () => {
   playClick();
@@ -771,6 +809,7 @@ function showTab(tab) {
     renderAchievements();
   }
   if (tab === "home" && typeof Arcade !== "undefined") Arcade.renderGrid();
+  if (tab === "home") updateContinueCard();
 }
 
 function renderCollection() {
@@ -821,6 +860,7 @@ function playLevel(index) {
   state.mode = "level";
   state.level = index;
   saveProgress();
+  saveLastPlayed({ id: "knot-escape", emoji: "🪢", nameKey: "game_knot_name", accent: "#2bb3a3", sub: t("level_label", { n: index + 1 }) });
   const level = LEVELS[index];
   state.arrows = level.arrows.map((a) => ({
     cells: a.cells.map((c) => [...c]),

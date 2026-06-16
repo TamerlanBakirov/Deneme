@@ -92,6 +92,9 @@ const Arcade = (() => {
     // Games with a `launch` callback just navigate elsewhere instead of mounting.
     if (typeof game.launch === "function") { game.launch(); return; }
 
+    // Record as last played so the Continue card on the home screen updates.
+    if (typeof window._saveLastPlayedArcade === "function") window._saveLastPlayedArcade(game);
+
     active = game;
     el.title.textContent = t(game.nameKey);
     el.score.textContent = "";
