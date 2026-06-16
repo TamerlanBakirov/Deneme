@@ -247,6 +247,17 @@ document.getElementById("btn-retry").addEventListener("click", () => {
 
 // --- Share result ---
 let lastWin = null;
+
+// The URL friends can open to play. On a web deployment this resolves to the
+// page the player is on; configure a fixed URL here for native (app) builds.
+const SHARE_URL_FALLBACK = "https://knot-escape.web.app";
+function getShareUrl() {
+  if (location.protocol === "http:" || location.protocol === "https:") {
+    return location.origin + location.pathname.replace(/index\.html$/, "");
+  }
+  return SHARE_URL_FALLBACK;
+}
+
 function buildShareText(win) {
   if (!win) return "";
   const title = "🪢 " + t("game_knot_name");
@@ -256,15 +267,130 @@ function buildShareText(win) {
   const stars = "⭐".repeat(win.stars) + "☆".repeat(3 - win.stars);
   return `${title} — ${t("level_label", { n: win.level })}\n${stars}\n👆 ${t("share_moves", { n: win.moves })} · ⏱ ${formatClock(win.timeMs)}`;
 }
-async function shareResult() {
-  const text = buildShareText(lastWin);
-  if (!text) return;
-  if (navigator.share) {
-    try { await navigator.share({ title: t("game_knot_name"), text }); return; }
-    catch (e) { if (e && e.name === "AbortError") return; }
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawStarShape(ctx, cx, cy, outerR, innerR, fill) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outerR : innerR;
+    const a = (Math.PI / 5) * i - Math.PI / 2;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
-  try { await navigator.clipboard.writeText(text); } catch (e) {}
-  showToast(t("copied"));
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+}
+
+// Renders a square shareable result card to a canvas (no emoji — drawn vector
+// stars and plain text so it looks identical on every platform).
+function buildShareCanvas(win) {
+  const S = 1080;
+  const cv = document.createElement("canvas");
+  cv.width = S; cv.height = S;
+  const ctx = cv.getContext("2d");
+  const dark = !!state.settings.dark;
+
+  const g = ctx.createLinearGradient(0, 0, S, S);
+  g.addColorStop(0, "#2bb3a3");
+  g.addColorStop(1, "#4fcab9");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = "rgba(255,255,255,0.09)";
+  ctx.beginPath(); ctx.arc(S * 0.85, S * 0.16, 190, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(S * 0.13, S * 0.9, 150, 0, Math.PI * 2); ctx.fill();
+
+  const m = 90;
+  roundRectPath(ctx, m, m, S - 2 * m, S - 2 * m, 56);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.20)";
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 18;
+  ctx.fillStyle = dark ? "#26211b" : "#ffffff";
+  ctx.fill();
+  ctx.restore();
+
+  const ink = dark ? "#f4ede0" : "#2a2622";
+  const muted = dark ? "#a99f8f" : "#6a6358";
+  ctx.textAlign = "center";
+
+  ctx.fillStyle = "#1f8d80";
+  ctx.font = "800 46px system-ui, -apple-system, 'Segoe UI', sans-serif";
+  ctx.fillText("KNOT ESCAPE", S / 2, m + 130);
+
+  if (win.mode === "daily") {
+    ctx.fillStyle = ink;
+    ctx.font = "800 70px system-ui, -apple-system, sans-serif";
+    ctx.fillText(t("daily_challenge"), S / 2, m + 260);
+    ctx.fillStyle = "#e0843a";
+    ctx.font = "800 168px system-ui, -apple-system, sans-serif";
+    ctx.fillText(String(win.score), S / 2, S / 2 + 90);
+    ctx.fillStyle = muted;
+    ctx.font = "600 50px system-ui, -apple-system, sans-serif";
+    ctx.fillText(formatClock(win.timeMs), S / 2, S / 2 + 200);
+  } else {
+    ctx.fillStyle = ink;
+    ctx.font = "800 92px system-ui, -apple-system, sans-serif";
+    ctx.fillText(t("level_label", { n: win.level }), S / 2, m + 290);
+    const starY = S / 2 + 20;
+    const gap = 165;
+    for (let i = 0; i < 3; i++) {
+      drawStarShape(ctx, S / 2 + (i - 1) * gap, starY, 78, 33, i < win.stars ? "#f5b932" : (dark ? "#3c352b" : "#e3ddd2"));
+    }
+    ctx.fillStyle = muted;
+    ctx.font = "600 52px system-ui, -apple-system, sans-serif";
+    ctx.fillText(formatClock(win.timeMs) + "    ·    " + t("share_moves", { n: win.moves }), S / 2, S / 2 + 215);
+  }
+
+  ctx.fillStyle = "#1f8d80";
+  ctx.font = "700 40px system-ui, -apple-system, sans-serif";
+  ctx.fillText(getShareUrl().replace(/^https?:\/\//, "").replace(/\/$/, ""), S / 2, S - m - 66);
+
+  return cv;
+}
+
+async function shareResult() {
+  if (!lastWin) return;
+  const url = getShareUrl();
+  const canvas = buildShareCanvas(lastWin);
+  const blob = await new Promise((res) => canvas.toBlob(res, "image/png"));
+
+  // Preferred: native share sheet with the image file (Web Share API Level 2).
+  if (blob && navigator.canShare) {
+    const file = new File([blob], "knot-escape.png", { type: "image/png" });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text: url, title: t("game_knot_name") });
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+      }
+    }
+  }
+
+  // Fallback: download the image and copy the link to the clipboard.
+  if (blob) {
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = href;
+    a.download = "knot-escape.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 1500);
+  }
+  try { await navigator.clipboard.writeText(buildShareText(lastWin) + "\n" + url); } catch (e) {}
+  showToast(t("share_saved"));
 }
 el.btnShare.addEventListener("click", () => { playClick(); shareResult(); });
 el.btnDaily.addEventListener("click", () => { playClick(); startDaily(); });
