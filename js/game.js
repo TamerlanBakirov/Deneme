@@ -294,6 +294,22 @@ function starsForHearts(hearts) {
   return 1;
 }
 
+// Mini-game (arcade) progress bridged into the achievement system. Each game
+// stores { stars: number[], unlocked } under knot-arcade-progress-<id> via
+// ArcadeUI; these helpers aggregate that for cross-game achievements.
+const ARCADE_GAME_IDS = ["memory", "flow", "2048", "blocks"];
+const ARCADE_GAME_LEVELS = 8;
+function arcadeGameStars(id) {
+  if (!window.ArcadeUI) return 0;
+  return ArcadeUI.loadProgress(id, ARCADE_GAME_LEVELS).stars.reduce((a, b) => a + b, 0);
+}
+function arcadeTotalStars() {
+  return ARCADE_GAME_IDS.reduce((sum, id) => sum + arcadeGameStars(id), 0);
+}
+function arcadeGamesCleared() {
+  return ARCADE_GAME_IDS.filter((id) => arcadeGameStars(id) > 0).length;
+}
+
 const ACHIEVEMENTS = [
   {
     id: "first-knot",
@@ -336,6 +352,24 @@ const ACHIEVEMENTS = [
     titleKey: "ach_daily_explorer_title",
     descKey: "ach_daily_explorer_desc",
     check: () => !!loadDailyRecord(),
+  },
+  {
+    id: "arcade-debut",
+    titleKey: "ach_arcade_debut_title",
+    descKey: "ach_arcade_debut_desc",
+    check: () => arcadeTotalStars() >= 1,
+  },
+  {
+    id: "arcade-allrounder",
+    titleKey: "ach_arcade_allrounder_title",
+    descKey: "ach_arcade_allrounder_desc",
+    check: () => arcadeGamesCleared() >= ARCADE_GAME_IDS.length,
+  },
+  {
+    id: "arcade-champion",
+    titleKey: "ach_arcade_champion_title",
+    descKey: "ach_arcade_champion_desc",
+    check: () => arcadeTotalStars() >= 30,
   },
 ];
 
