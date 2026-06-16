@@ -71,14 +71,31 @@ const Arcade = (() => {
       card.className = "arcade-card";
       card.style.setProperty("--card-accent", game.accent || "var(--accent)");
 
-      const best = getBest(game.id);
+      const isLaunch = typeof game.launch === "function";
+      let progHtml = "";
+      if (!isLaunch && window.ArcadeUI) {
+        const prog = ArcadeUI.loadProgress(game.id, 8);
+        const earned = prog.stars.reduce((a, b) => a + b, 0);
+        const total = prog.stars.length * 3;
+        const pct = total > 0 ? Math.round(earned / total * 100) : 0;
+        progHtml = `<div class="arcade-card-prog">
+          <span class="acp-bar-wrap"><span class="acp-bar" style="width:${pct}%"></span></span>
+          <span class="acp-count">${earned}/${total}★</span>
+        </div>`;
+      } else if (isLaunch && game.id === "knot-escape") {
+        const lvl = parseInt(localStorage.getItem("knot-escape-progress"), 10) || 0;
+        progHtml = `<span class="arcade-card-sub">${t("level_label", { n: lvl + 1 })}</span>`;
+      }
+
       card.innerHTML = `
-        <span class="arcade-card-emoji" aria-hidden="true">${game.emoji}</span>
-        <span class="arcade-card-name">${t(game.nameKey)}</span>
-        <span class="arcade-card-desc">${t(game.descKey)}</span>
-        <span class="arcade-card-best">${
-          best === null ? "" : t("best_score", { score: best })
-        }</span>
+        <div class="arcade-card-hdr">
+          <span class="arcade-card-emoji" aria-hidden="true">${game.emoji}</span>
+        </div>
+        <div class="arcade-card-body">
+          <span class="arcade-card-name">${t(game.nameKey)}</span>
+          <span class="arcade-card-desc">${t(game.descKey)}</span>
+          ${progHtml}
+        </div>
       `;
       card.addEventListener("click", () => {
         playClick();
