@@ -106,6 +106,10 @@ const el = {
   continueArt: document.getElementById("continue-art"),
   continueTitle: document.getElementById("continue-title"),
   continueSub: document.getElementById("continue-sub"),
+  streakStrip: document.getElementById("streak-strip"),
+  streakCountLine: document.getElementById("streak-count-line"),
+  streakBest: document.getElementById("streak-best"),
+  streakWeek: document.getElementById("streak-week"),
 };
 
 // --- Continue Playing card ---
@@ -142,6 +146,46 @@ el.btnContinue.addEventListener("click", () => {
 window._saveLastPlayedArcade = function (game) {
   saveLastPlayed({ id: game.id, emoji: game.emoji, nameKey: game.nameKey, accent: game.accent || "#2bb3a3", sub: t(game.descKey) || "" });
 };
+
+// --- Daily streak ---
+const STREAK_KEY = "knot-streak";
+function loadStreak() {
+  try { return JSON.parse(localStorage.getItem(STREAK_KEY)) || {}; } catch (e) { return {}; }
+}
+// Records that the player was active today and advances the streak counter.
+// Idempotent within a calendar day. Returns the up-to-date streak data.
+function recordStreak() {
+  const today = dateKey();
+  const data = loadStreak();
+  if (!Array.isArray(data.dates)) data.dates = [];
+  if (data.last !== today) {
+    const yesterday = dateKey(new Date(Date.now() - 86400000));
+    data.count = data.last === yesterday ? (data.count || 0) + 1 : 1;
+    data.last = today;
+  }
+  if (data.count == null) data.count = 1;
+  if (!data.dates.includes(today)) data.dates.push(today);
+  data.dates = data.dates.slice(-14);
+  data.best = Math.max(data.best || 0, data.count);
+  try { localStorage.setItem(STREAK_KEY, JSON.stringify(data)); } catch (e) {}
+  return data;
+}
+function renderStreak() {
+  if (!el.streakStrip) return;
+  const data = recordStreak();
+  const count = data.count || 1;
+  el.streakCountLine.textContent = count === 1 ? t("day_streak_one") : t("day_streak", { n: count });
+  el.streakBest.textContent = (data.best || count) > count
+    ? t("streak_best", { n: data.best })
+    : t("streak_today_done");
+  el.streakWeek.innerHTML = "";
+  for (let i = 6; i >= 0; i--) {
+    const d = dateKey(new Date(Date.now() - i * 86400000));
+    const dot = document.createElement("span");
+    dot.className = "streak-dot" + (data.dates.includes(d) ? " on" : "") + (i === 0 ? " today" : "");
+    el.streakWeek.appendChild(dot);
+  }
+}
 document.getElementById("btn-back").addEventListener("click", () => { playClick(); showTab(state.returnTab); });
 document.getElementById("btn-restart").addEventListener("click", () => {
   playClick();
@@ -809,7 +853,7 @@ function showTab(tab) {
     renderAchievements();
   }
   if (tab === "home" && typeof Arcade !== "undefined") Arcade.renderGrid();
-  if (tab === "home") updateContinueCard();
+  if (tab === "home") { updateContinueCard(); renderStreak(); }
 }
 
 function renderCollection() {
@@ -1603,6 +1647,7 @@ function applyAllTranslations() {
   renderCollection();
   renderAchievements();
   if (typeof Arcade !== "undefined") Arcade.renderGrid();
+  renderStreak();
   if (!el.tutorialOverlay.classList.contains("hidden")) renderTutorialStep();
 }
 
