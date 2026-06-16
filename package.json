@@ -1,7 +1,7 @@
 {
   "name": "knot-escape",
   "version": "1.0.0",
-  "description": "Knot Escape puzzle game",
+  "description": "Puzzle Park — a collection of mini puzzle games",
   "private": true,
   "scripts": {
     "build": "node scripts/build-www.js",

@@ -250,7 +250,7 @@ let lastWin = null;
 
 // The URL friends can open to play. On a web deployment this resolves to the
 // page the player is on; configure a fixed URL here for native (app) builds.
-const SHARE_URL_FALLBACK = "https://knot-escape.web.app";
+const SHARE_URL_FALLBACK = "https://puzzle-park.web.app";
 function getShareUrl() {
   if (location.protocol === "http:" || location.protocol === "https:") {
     return location.origin + location.pathname.replace(/index\.html$/, "");
@@ -260,7 +260,7 @@ function getShareUrl() {
 
 function buildShareText(win) {
   if (!win) return "";
-  const title = "🪢 " + t("game_knot_name");
+  const title = "🧩 Puzzle Park";
   if (win.mode === "daily") {
     return `${title} — ${t("daily_challenge")}\n🏅 ${win.score} · ⏱ ${formatClock(win.timeMs)}`;
   }
@@ -326,7 +326,7 @@ function buildShareCanvas(win) {
 
   ctx.fillStyle = "#1f8d80";
   ctx.font = "800 46px system-ui, -apple-system, 'Segoe UI', sans-serif";
-  ctx.fillText("KNOT ESCAPE", S / 2, m + 130);
+  ctx.fillText("PUZZLE PARK", S / 2, m + 130);
 
   if (win.mode === "daily") {
     ctx.fillStyle = ink;
@@ -367,10 +367,10 @@ async function shareResult() {
 
   // Preferred: native share sheet with the image file (Web Share API Level 2).
   if (blob && navigator.canShare) {
-    const file = new File([blob], "knot-escape.png", { type: "image/png" });
+    const file = new File([blob], "puzzle-park.png", { type: "image/png" });
     if (navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], text: url, title: t("game_knot_name") });
+        await navigator.share({ files: [file], text: url, title: "Puzzle Park" });
         return;
       } catch (e) {
         if (e && e.name === "AbortError") return;
@@ -383,7 +383,7 @@ async function shareResult() {
     const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = href;
-    a.download = "knot-escape.png";
+    a.download = "puzzle-park.png";
     document.body.appendChild(a);
     a.click();
     a.remove();
