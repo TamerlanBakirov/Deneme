@@ -21,6 +21,9 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       redraws: "Redraws",
       flawless: "Flawless solve — every path drawn once!",
       all_levels_done: "All levels complete — nice work!",
+      tut0_e: "🎨", tut0_t: "Connect the Colors",   tut0_b: "Draw a path from one colored dot to its matching dot.",
+      tut1_e: "🔲", tut1_t: "Fill Every Cell",       tut1_b: "Your paths must cover every single cell on the grid!",
+      tut2_e: "⭐", tut2_t: "0 Redraws = 3 Stars",  tut2_b: "Connect each color perfectly on the first try for a flawless 3-star run!",
     },
     tr: {
       connect: "Tüm çiftleri bağla ve her hücreyi doldur",
@@ -28,6 +31,9 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       redraws: "Yeniden çizim",
       flawless: "Kusursuz çözüm — her yol tek seferde çizildi!",
       all_levels_done: "Tüm seviyeler tamam — harika iş!",
+      tut0_e: "🎨", tut0_t: "Renkleri Bağla",              tut0_b: "Renkli noktadan eşine doğru bir yol çiz.",
+      tut1_e: "🔲", tut1_t: "Her Kareyi Doldur",            tut1_b: "Yolların ızgaradaki tüm kareleri kapsamalı!",
+      tut2_e: "⭐", tut2_t: "0 Yeniden Çizim = 3 Yıldız", tut2_b: "Her rengi ilk denemede doğru bağlarsan kusursuz 3 yıldız!",
     },
   };
   function lang() {
@@ -211,27 +217,23 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     boardArea = null;
     boardEl = gridEl = svgEl = dotsLayer = progressEl = null;
     root.innerHTML = "";
-
-    const wrap = document.createElement("div");
-    wrap.className = "arcade-level-select";
-
-    const hint = document.createElement("p");
-    hint.className = "arcade-level-hint";
-    hint.textContent = ArcadeUI.t("tap_to_play");
-    wrap.appendChild(hint);
-
-    const gridHost = document.createElement("div");
-    wrap.appendChild(gridHost);
-    root.appendChild(wrap);
-
-    const progress = ArcadeUI.loadProgress("flow", TOTAL_LEVELS);
-    ArcadeUI.renderLevelGrid(gridHost, {
-      total: TOTAL_LEVELS,
-      progress,
-      onSelect: (i) => startLevel(i),
-    });
-
     api.setScore("");
+
+    const tutSteps = [0, 1, 2].map((i) => ({ emoji: L("tut" + i + "_e"), title: L("tut" + i + "_t"), text: L("tut" + i + "_b") }));
+    ArcadeUI.showFirstRunTutorial(root, "flow", tutSteps, api, () => {
+      root.innerHTML = "";
+      const wrap = document.createElement("div");
+      wrap.className = "arcade-level-select";
+      const hint = document.createElement("p");
+      hint.className = "arcade-level-hint";
+      hint.textContent = ArcadeUI.t("tap_to_play");
+      wrap.appendChild(hint);
+      const gridHost = document.createElement("div");
+      wrap.appendChild(gridHost);
+      root.appendChild(wrap);
+      const progress = ArcadeUI.loadProgress("flow", TOTAL_LEVELS);
+      ArcadeUI.renderLevelGrid(gridHost, { total: TOTAL_LEVELS, progress, onSelect: (i) => startLevel(i) });
+    });
   }
 
   // ---- Play view ----

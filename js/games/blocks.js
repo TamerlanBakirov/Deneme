@@ -15,8 +15,18 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
   // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const LOCAL = {
-    en: { combo: "Combo x{n}!", target_hint: "Target: {n}" },
-    tr: { combo: "Kombo x{n}!", target_hint: "Hedef: {n}" },
+    en: {
+      combo: "Combo x{n}!", target_hint: "Target: {n}",
+      tut0_e: "🧩", tut0_t: "Place the Pieces",  tut0_b: "Drag pieces from the tray onto the board to place them.",
+      tut1_e: "💥", tut1_t: "Clear Lines",        tut1_b: "Fill a complete row or column to clear it and score points!",
+      tut2_e: "🎯", tut2_t: "Hit the Target",     tut2_b: "Reach the target score within 20 moves to win the level!",
+    },
+    tr: {
+      combo: "Kombo x{n}!", target_hint: "Hedef: {n}",
+      tut0_e: "🧩", tut0_t: "Parçaları Yerleştir", tut0_b: "Tepsideki parçaları sürükleyerek tahtaya yerleştir.",
+      tut1_e: "💥", tut1_t: "Satırları Temizle",   tut1_b: "Tam bir satır veya sütunu doldur, temizle, puan kazan!",
+      tut2_e: "🎯", tut2_t: "Hedefe Ulaş",          tut2_b: "20 hamle içinde hedef puanı geçerek seviyeyi kazan!",
+    },
   };
   function lang() {
     const l = (document.documentElement.lang || "en").slice(0, 2);
@@ -774,27 +784,23 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     movesLabel = null;
     wrap = null;
     root.innerHTML = "";
-
-    const sel = document.createElement("div");
-    sel.className = "arcade-level-select";
-
-    const hint = document.createElement("p");
-    hint.className = "arcade-level-hint";
-    hint.textContent = ArcadeUI.t("tap_to_play");
-    sel.appendChild(hint);
-
-    const gridHost = document.createElement("div");
-    sel.appendChild(gridHost);
-    root.appendChild(sel);
-
-    const progress = ArcadeUI.loadProgress("blocks", TOTAL_LEVELS);
-    ArcadeUI.renderLevelGrid(gridHost, {
-      total: TOTAL_LEVELS,
-      progress,
-      onSelect: (i) => startLevel(i),
-    });
-
     api.setScore("");
+
+    const tutSteps = [0, 1, 2].map((i) => ({ emoji: lt("tut" + i + "_e"), title: lt("tut" + i + "_t"), text: lt("tut" + i + "_b") }));
+    ArcadeUI.showFirstRunTutorial(root, "blocks", tutSteps, api, () => {
+      root.innerHTML = "";
+      const sel = document.createElement("div");
+      sel.className = "arcade-level-select";
+      const hint = document.createElement("p");
+      hint.className = "arcade-level-hint";
+      hint.textContent = ArcadeUI.t("tap_to_play");
+      sel.appendChild(hint);
+      const gridHost = document.createElement("div");
+      sel.appendChild(gridHost);
+      root.appendChild(sel);
+      const progress = ArcadeUI.loadProgress("blocks", TOTAL_LEVELS);
+      ArcadeUI.renderLevelGrid(gridHost, { total: TOTAL_LEVELS, progress, onSelect: (i) => startLevel(i) });
+    });
   }
 
   // ----- play view -----

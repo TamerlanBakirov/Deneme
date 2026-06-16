@@ -15,6 +15,8 @@ window.ArcadeUI = (function () {
       level_complete: "Level Complete!",
       level_failed: "Try Again",
       moves_left: "Moves left",
+      tut_next: "Next",
+      tut_done: "Got it!",
     },
     tr: {
       select_level: "Seviye Seç",
@@ -26,6 +28,8 @@ window.ArcadeUI = (function () {
       level_complete: "Seviye Tamamlandı!",
       level_failed: "Tekrar Dene",
       moves_left: "Kalan hamle",
+      tut_next: "İleri",
+      tut_done: "Anladım!",
     },
   };
 
@@ -170,5 +174,71 @@ window.ArcadeUI = (function () {
     return cell;
   }
 
-  return { t, loadProgress, saveProgress, recordResult, renderLevelGrid, renderStars, fitSquare, fitGrid };
+  // ---- First-run tutorial ----
+  // Shows a 2-3 step how-to-play overlay the very first time a game is opened.
+  // steps: [{ emoji, title, text }, ...]
+  // Calls onDone() immediately if the player has already seen this tutorial.
+  const TUT_PREFIX = "knot-arcade-tutorial-";
+  function showFirstRunTutorial(root, id, steps, api, onDone) {
+    try {
+      if (localStorage.getItem(TUT_PREFIX + id) === "seen") { onDone(); return; }
+    } catch (e) { onDone(); return; }
+
+    let step = 0;
+
+    const ov = document.createElement("div");
+    ov.className = "arcade-tut-overlay";
+
+    const card = document.createElement("div");
+    card.className = "arcade-tut-card";
+
+    const emoji = document.createElement("div");
+    emoji.className = "arcade-tut-emoji";
+
+    const title = document.createElement("h3");
+    title.className = "arcade-tut-title";
+
+    const text = document.createElement("p");
+    text.className = "arcade-tut-text";
+
+    const dots = document.createElement("div");
+    dots.className = "arcade-tut-dots";
+
+    const btn = document.createElement("button");
+    btn.className = "arcade-btn primary arcade-tut-btn";
+
+    function render() {
+      const s = steps[step];
+      emoji.textContent = s.emoji;
+      title.textContent = s.title;
+      text.textContent = s.text;
+      btn.textContent = step < steps.length - 1 ? t("tut_next") : t("tut_done");
+      dots.innerHTML = "";
+      for (let i = 0; i < steps.length; i++) {
+        const d = document.createElement("span");
+        d.className = "arcade-tut-dot" + (i === step ? " active" : "");
+        dots.appendChild(d);
+      }
+    }
+
+    btn.addEventListener("click", () => {
+      if (api && api.playClick) api.playClick();
+      step++;
+      if (step < steps.length) { render(); return; }
+      try { localStorage.setItem(TUT_PREFIX + id, "seen"); } catch (e) {}
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      onDone();
+    });
+
+    card.appendChild(emoji);
+    card.appendChild(title);
+    card.appendChild(text);
+    card.appendChild(dots);
+    card.appendChild(btn);
+    ov.appendChild(card);
+    root.appendChild(ov);
+    render();
+  }
+
+  return { t, loadProgress, saveProgress, recordResult, renderLevelGrid, renderStars, fitSquare, fitGrid, showFirstRunTutorial };
 })();

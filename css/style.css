@@ -834,6 +834,67 @@ body {
   margin-top: 6px;
 }
 
+/* ---------- First-run tutorial overlay ---------- */
+.arcade-tut-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: overlay-fade 0.22s ease;
+}
+.arcade-tut-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 28px 24px 22px;
+  max-width: 300px;
+  width: calc(100% - 48px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+}
+.arcade-tut-emoji {
+  font-size: 44px;
+  line-height: 1;
+}
+.arcade-tut-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0;
+}
+.arcade-tut-text {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+.arcade-tut-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 2px 0;
+}
+.arcade-tut-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--heart-empty);
+  transition: background 0.18s;
+}
+.arcade-tut-dot.active {
+  background: var(--accent);
+}
+.arcade-tut-btn {
+  width: 100%;
+  margin-top: 4px;
+}
+
 /* ---------- Buttons ---------- */
 .play-btn {
   width: 100%;

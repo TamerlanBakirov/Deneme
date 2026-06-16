@@ -19,8 +19,18 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
   // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const STRINGS = {
-    en: { get_ready: "Get ready!", memorize: "Memorize the cards…", streak: "🔥 x{n}" },
-    tr: { get_ready: "Hazır ol!", memorize: "Kartları ezberle…", streak: "🔥 x{n}" },
+    en: {
+      get_ready: "Get ready!", memorize: "Memorize the cards…", streak: "🔥 x{n}",
+      tut0_e: "🧠", tut0_t: "Memorize the Cards", tut0_b: "Cards are shown briefly at the start — look carefully!",
+      tut1_e: "🃏", tut1_t: "Find the Pairs",     tut1_b: "Tap two cards. If they match, they stay revealed!",
+      tut2_e: "🔥", tut2_t: "Combo Streak",        tut2_b: "Correct matches in a row light up 🔥 and reduce your move count. Fewer moves = more stars!",
+    },
+    tr: {
+      get_ready: "Hazır ol!", memorize: "Kartları ezberle…", streak: "🔥 x{n}",
+      tut0_e: "🧠", tut0_t: "Kartları Ezberle",     tut0_b: "Kartlar başta kısa süre gösterilir — dikkatlice bak!",
+      tut1_e: "🃏", tut1_t: "Çiftleri Bul",          tut1_b: "İki karta dokun. Eşleşirlerse açık kalır!",
+      tut2_e: "🔥", tut2_t: "Kombo Serisi",           tut2_b: "Art arda doğru eşleşme 🔥 serisini başlatır. Az hamle = fazla yıldız!",
+    },
   };
   function tt(key, vars) {
     const lang = (document.documentElement.lang || "en").slice(0, 2);
@@ -365,27 +375,23 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     boardArea = null;
     streakEl = null;
     root.innerHTML = "";
-
-    const wrap = document.createElement("div");
-    wrap.className = "arcade-level-select";
-
-    const hint = document.createElement("p");
-    hint.className = "arcade-level-hint";
-    hint.textContent = ArcadeUI.t("tap_to_play");
-    wrap.appendChild(hint);
-
-    const gridHost = document.createElement("div");
-    wrap.appendChild(gridHost);
-    root.appendChild(wrap);
-
-    const progress = ArcadeUI.loadProgress("memory", TOTAL_LEVELS);
-    ArcadeUI.renderLevelGrid(gridHost, {
-      total: TOTAL_LEVELS,
-      progress,
-      onSelect: (i) => startLevel(i),
-    });
-
     api.setScore("");
+
+    const tutSteps = [0, 1, 2].map((i) => ({ emoji: tt("tut" + i + "_e"), title: tt("tut" + i + "_t"), text: tt("tut" + i + "_b") }));
+    ArcadeUI.showFirstRunTutorial(root, "memory", tutSteps, api, () => {
+      root.innerHTML = "";
+      const wrap = document.createElement("div");
+      wrap.className = "arcade-level-select";
+      const hint = document.createElement("p");
+      hint.className = "arcade-level-hint";
+      hint.textContent = ArcadeUI.t("tap_to_play");
+      wrap.appendChild(hint);
+      const gridHost = document.createElement("div");
+      wrap.appendChild(gridHost);
+      root.appendChild(wrap);
+      const progress = ArcadeUI.loadProgress("memory", TOTAL_LEVELS);
+      ArcadeUI.renderLevelGrid(gridHost, { total: TOTAL_LEVELS, progress, onSelect: (i) => startLevel(i) });
+    });
   }
 
   // ---- Play view ----

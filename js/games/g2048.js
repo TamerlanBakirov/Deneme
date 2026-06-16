@@ -16,8 +16,18 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
   // Local fallback strings (i18n.js can't be edited). English default + Turkish.
   const LOCAL = {
-    en: { reached: "Target reached!", keep_going: "Keep going for more stars!", target_hint: "Reach {n} to pass" },
-    tr: { reached: "Hedefe ulaştın!", keep_going: "Daha çok yıldız için devam et!", target_hint: "Geçmek için {n}'e ulaş" },
+    en: {
+      reached: "Target reached!", keep_going: "Keep going for more stars!", target_hint: "Reach {n} to pass",
+      tut0_e: "👆", tut0_t: "Swipe to Merge",    tut0_b: "Swipe in any direction. Tiles with the same number merge into one!",
+      tut1_e: "🎯", tut1_t: "Reach the Target",  tut1_b: "Each level has a tile target. Hit it to pass the level!",
+      tut2_e: "↺",  tut2_t: "One Undo",           tut2_b: "Made a mistake? Tap ↺ to undo your last move — one per turn.",
+    },
+    tr: {
+      reached: "Hedefe ulaştın!", keep_going: "Daha çok yıldız için devam et!", target_hint: "Geçmek için {n}'e ulaş",
+      tut0_e: "👆", tut0_t: "Kaydırarak Birleştir", tut0_b: "Herhangi bir yöne kaydır. Aynı sayılı taşlar birleşir!",
+      tut1_e: "🎯", tut1_t: "Hedefe Ulaş",           tut1_b: "Her seviyenin bir taş hedefi var. Ona ulaş, seviyeyi geç!",
+      tut2_e: "↺",  tut2_t: "Bir Geri Al",            tut2_b: "Hata mı yaptın? ↺ tuşuyla son hamleyi geri al.",
+    },
   };
   function lang() {
     const l = (document.documentElement.lang || "en").slice(0, 2);
@@ -557,26 +567,22 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     undoBtn = null;
     root.innerHTML = "";
 
-    const wrap = document.createElement("div");
-    wrap.className = "arcade-level-select";
-
-    const hint = document.createElement("p");
-    hint.className = "arcade-level-hint";
-    hint.textContent = ArcadeUI.t("tap_to_play");
-    wrap.appendChild(hint);
-
-    const gridHost = document.createElement("div");
-    wrap.appendChild(gridHost);
-    root.appendChild(wrap);
-
-    const progress = ArcadeUI.loadProgress("2048", TOTAL_LEVELS);
-    ArcadeUI.renderLevelGrid(gridHost, {
-      total: TOTAL_LEVELS,
-      progress,
-      onSelect: (i) => startLevel(i),
+    const tutSteps = [0, 1, 2].map((i) => ({ emoji: lt("tut" + i + "_e"), title: lt("tut" + i + "_t"), text: lt("tut" + i + "_b") }));
+    ArcadeUI.showFirstRunTutorial(root, "2048", tutSteps, api, () => {
+      root.innerHTML = "";
+      const wrap = document.createElement("div");
+      wrap.className = "arcade-level-select";
+      const hint = document.createElement("p");
+      hint.className = "arcade-level-hint";
+      hint.textContent = ArcadeUI.t("tap_to_play");
+      wrap.appendChild(hint);
+      const gridHost = document.createElement("div");
+      wrap.appendChild(gridHost);
+      root.appendChild(wrap);
+      const progress = ArcadeUI.loadProgress("2048", TOTAL_LEVELS);
+      ArcadeUI.renderLevelGrid(gridHost, { total: TOTAL_LEVELS, progress, onSelect: (i) => startLevel(i) });
+      api.setScore("");
     });
-
-    api.setScore("");
   }
 
   // ---- Play view ----
