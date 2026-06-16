@@ -31,7 +31,7 @@ const state = {
   dailyCountdownInterval: null,
   tab: "home", // "home" | "challenge" | "collection" | "settings"
   returnTab: "home",
-  settings: { sound: true, vibration: true, dark: false, colors: true },
+  settings: { sound: true, music: false, vibration: true, dark: false, colors: true },
   stars: new Array(LEVELS.length).fill(0), // best star rating (0-3) per level
   records: new Array(LEVELS.length).fill(null), // best { timeMs, moves } per level
   boardZoom: 1,
@@ -110,6 +110,13 @@ const el = {
   streakCountLine: document.getElementById("streak-count-line"),
   streakBest: document.getElementById("streak-best"),
   streakWeek: document.getElementById("streak-week"),
+  statStars: document.getElementById("stat-stars"),
+  statLevels: document.getElementById("stat-levels"),
+  statAwards: document.getElementById("stat-awards"),
+  statBestStreak: document.getElementById("stat-best-streak"),
+  btnShare: document.getElementById("btn-share"),
+  toast: document.getElementById("toast"),
+  toggleMusic: document.getElementById("toggle-music"),
 };
 
 // --- Continue Playing card ---
@@ -186,6 +193,37 @@ function renderStreak() {
     el.streakWeek.appendChild(dot);
   }
 }
+
+// --- Home stats summary ---
+function renderStats() {
+  if (!el.statStars) return;
+  const knotStars = state.stars.reduce((a, b) => a + b, 0);
+  const arcadeStars = typeof arcadeTotalStars === "function" ? arcadeTotalStars() : 0;
+  const levelsCleared = state.stars.filter((s) => s > 0).length;
+  const awards = ACHIEVEMENTS.filter((a) => a.check(state)).length;
+  const bestStreak = (loadStreak().best) || 0;
+  el.statStars.textContent = knotStars + arcadeStars;
+  el.statLevels.textContent = levelsCleared;
+  el.statAwards.textContent = awards + "/" + ACHIEVEMENTS.length;
+  el.statBestStreak.textContent = bestStreak;
+}
+
+// --- Toast ---
+let toastTimer = null;
+function showToast(msg) {
+  if (!el.toast) return;
+  el.toast.textContent = msg;
+  el.toast.classList.remove("hidden");
+  // force reflow so the transition replays
+  void el.toast.offsetWidth;
+  el.toast.classList.add("show");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.toast.classList.remove("show");
+    setTimeout(() => el.toast.classList.add("hidden"), 260);
+  }, 1900);
+}
+
 document.getElementById("btn-back").addEventListener("click", () => { playClick(); showTab(state.returnTab); });
 document.getElementById("btn-restart").addEventListener("click", () => {
   playClick();
@@ -206,6 +244,29 @@ document.getElementById("btn-retry").addEventListener("click", () => {
   if (state.mode === "daily") startDaily();
   else playLevel(state.level);
 });
+
+// --- Share result ---
+let lastWin = null;
+function buildShareText(win) {
+  if (!win) return "";
+  const title = "🪢 " + t("game_knot_name");
+  if (win.mode === "daily") {
+    return `${title} — ${t("daily_challenge")}\n🏅 ${win.score} · ⏱ ${formatClock(win.timeMs)}`;
+  }
+  const stars = "⭐".repeat(win.stars) + "☆".repeat(3 - win.stars);
+  return `${title} — ${t("level_label", { n: win.level })}\n${stars}\n👆 ${t("share_moves", { n: win.moves })} · ⏱ ${formatClock(win.timeMs)}`;
+}
+async function shareResult() {
+  const text = buildShareText(lastWin);
+  if (!text) return;
+  if (navigator.share) {
+    try { await navigator.share({ title: t("game_knot_name"), text }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  try { await navigator.clipboard.writeText(text); } catch (e) {}
+  showToast(t("copied"));
+}
+el.btnShare.addEventListener("click", () => { playClick(); shareResult(); });
 el.btnDaily.addEventListener("click", () => { playClick(); startDaily(); });
 
 // Optional rewarded ad: revive with a couple of hearts instead of restarting.
@@ -274,6 +335,14 @@ el.toggleVibration.addEventListener("click", () => {
   saveSettings();
   applySettings();
   vibrate(20);
+});
+
+el.toggleMusic.addEventListener("click", () => {
+  state.settings.music = !state.settings.music;
+  saveSettings();
+  applySettings();
+  if (state.settings.music) startMusic();
+  else stopMusic();
 });
 
 el.toggleDark.addEventListener("click", () => {
@@ -496,6 +565,10 @@ function applySettings() {
   el.toggleDark.setAttribute("aria-checked", String(state.settings.dark));
   el.toggleColors.classList.toggle("on", state.settings.colors);
   el.toggleColors.setAttribute("aria-checked", String(state.settings.colors));
+  if (el.toggleMusic) {
+    el.toggleMusic.classList.toggle("on", state.settings.music);
+    el.toggleMusic.setAttribute("aria-checked", String(state.settings.music));
+  }
 }
 
 // ---------- Sound & haptics ----------
@@ -556,6 +629,77 @@ function playZoomSound() {
 function vibrate(pattern) {
   if (!state.settings.vibration) return;
   if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+// ---------- Ambient background music (procedural, no audio assets) ----------
+// A slow, calm chord progression generated with the Web Audio API. Each chord
+// fades in and out gently so it sits quietly under the gameplay.
+let musicTimer = null;
+let musicGain = null;
+const MUSIC_CHORDS = [
+  [220.0, 261.63, 329.63], // A minor
+  [196.0, 246.94, 293.66], // G
+  [174.61, 220.0, 261.63], // F
+  [261.63, 329.63, 392.0], // C
+];
+let musicStep = 0;
+
+function playChord(freqs) {
+  const ctx = audioCtx;
+  if (!ctx || !musicGain) return;
+  const now = ctx.currentTime;
+  const dur = 3.6;
+  freqs.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = i === 0 ? "sine" : "triangle";
+    osc.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.05, now + 0.9);
+    g.gain.linearRampToValueAtTime(0.04, now + dur - 1.2);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(g).connect(musicGain);
+    osc.start(now);
+    osc.stop(now + dur);
+  });
+}
+
+function startMusic() {
+  if (!state.settings.music || musicTimer) return;
+  const ctx = ensureAudioCtx();
+  if (!ctx) return;
+  musicGain = ctx.createGain();
+  musicGain.gain.value = 0.7;
+  musicGain.connect(ctx.destination);
+  musicStep = 0;
+  const tick = () => {
+    playChord(MUSIC_CHORDS[musicStep % MUSIC_CHORDS.length]);
+    musicStep++;
+  };
+  tick();
+  musicTimer = setInterval(tick, 3400);
+}
+
+function stopMusic() {
+  if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  if (musicGain && audioCtx) {
+    try {
+      const now = audioCtx.currentTime;
+      musicGain.gain.cancelScheduledValues(now);
+      musicGain.gain.setValueAtTime(musicGain.gain.value, now);
+      musicGain.gain.linearRampToValueAtTime(0.0001, now + 0.6);
+    } catch (e) {}
+  }
+  musicGain = null;
+}
+
+// Browsers block audio until the first user gesture; kick off music then.
+let musicGestureHooked = false;
+function hookMusicGesture() {
+  if (musicGestureHooked) return;
+  musicGestureHooked = true;
+  const onFirst = () => { if (state.settings.music) startMusic(); };
+  document.addEventListener("pointerdown", onFirst, { once: true });
 }
 
 function playWinChime() {
@@ -853,7 +997,7 @@ function showTab(tab) {
     renderAchievements();
   }
   if (tab === "home" && typeof Arcade !== "undefined") Arcade.renderGrid();
-  if (tab === "home") { updateContinueCard(); renderStreak(); }
+  if (tab === "home") { updateContinueCard(); renderStreak(); renderStats(); }
 }
 
 function renderCollection() {
@@ -1510,6 +1654,8 @@ function onWin() {
   el.winRecords.classList.remove("hidden");
   el.winDailyInfo.classList.add("hidden");
   el.btnNext.textContent = t("continue");
+  el.btnShare.classList.remove("hidden");
+  lastWin = { mode: "level", level: cleared, stars: earned, moves, timeMs };
   showWinStars(earned);
   if (state.level < LEVELS.length - 1) {
     state.level += 1;
@@ -1563,6 +1709,8 @@ function onDailyWin() {
   el.winDailyNext.textContent = t("new_challenge_in_suffix", { time: formatHMS(msUntilNextMidnight()) });
   el.winDailyInfo.classList.remove("hidden");
   el.btnNext.textContent = t("ok");
+  el.btnShare.classList.remove("hidden");
+  lastWin = { mode: "daily", score, timeMs };
   playWinChime();
   launchConfetti();
   el.winOverlay.classList.remove("hidden");
@@ -1648,6 +1796,7 @@ function applyAllTranslations() {
   renderAchievements();
   if (typeof Arcade !== "undefined") Arcade.renderGrid();
   renderStreak();
+  renderStats();
   if (!el.tutorialOverlay.classList.contains("hidden")) renderTutorialStep();
 }
 
@@ -1675,6 +1824,7 @@ Ads.init();
 updatePremiumUi();
 setupBoardZoom();
 showTab("home");
+hookMusicGesture();
 
 // ---------- Native back button (Android, via Capacitor) ----------
 
