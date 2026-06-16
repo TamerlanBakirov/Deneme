@@ -1381,23 +1381,62 @@ body {
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none;
+  opacity: 0; /* hidden — kept only as animateLeave math reference */
 }
 
 .arrow-head {
   fill: var(--rope-deep);
+  opacity: 0;
 }
 
 .arrow-knot {
   fill: var(--rope-deep);
+  opacity: 0;
 }
 
-.arrow-group.blocked .arrow-stroke {
-  stroke: var(--heart);
+/* ── Train car visuals ────────────────────────────────────────── */
+.train-body {
+  fill: var(--rope);
+  stroke: var(--rope-deep);
+  stroke-width: 1.2;
+  pointer-events: none;
 }
 
-.arrow-group.blocked .arrow-head {
-  fill: var(--heart);
+.train-cab {
+  fill: var(--rope-deep);
+  opacity: 0.48;
+  pointer-events: none;
 }
+
+.train-bumper {
+  fill: var(--rope-deep);
+  pointer-events: none;
+}
+
+.train-window {
+  fill: rgba(0, 0, 0, 0.20);
+  pointer-events: none;
+}
+
+.train-wheel {
+  fill: var(--rope-deep);
+  stroke: var(--panel);
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+.train-coupling {
+  fill: var(--rope-deep);
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+/* Blocked — flash red */
+.arrow-group.blocked .train-body { fill: var(--heart); stroke: var(--heart); }
+.arrow-group.blocked .train-cab,
+.arrow-group.blocked .train-bumper,
+.arrow-group.blocked .train-wheel,
+.arrow-group.blocked .train-coupling { fill: var(--heart); }
 
 .arrow-group.blocked {
   animation: shake 0.4s ease;
@@ -1432,6 +1471,13 @@ body {
   fill: none;
 }
 
+.arrow-group.hint .train-body,
+.arrow-group.hint .train-cab,
+.arrow-group.hint .train-bumper { fill: var(--accent); }
+.arrow-group.hint .train-body   { stroke: var(--accent-deep, var(--accent)); }
+.arrow-group.hint .train-wheel,
+.arrow-group.hint .train-coupling { fill: var(--accent-deep, var(--accent)); }
+
 @keyframes hint-pulse {
   0%, 100% { filter: drop-shadow(0 0 0 rgba(43, 179, 163, 0)); }
   50% { filter: drop-shadow(0 0 7px rgba(43, 179, 163, 0.95)); }
@@ -1452,6 +1498,31 @@ body {
 .app.arrow-colors .arrow-group.dir-right .arrow-stroke { stroke: var(--dir-right); }
 .app.arrow-colors .arrow-group.dir-right .arrow-head,
 .app.arrow-colors .arrow-group.dir-right .arrow-knot { fill: var(--dir-right-deep); }
+
+/* Direction colours for train cars */
+.app.arrow-colors .arrow-group.dir-up    .train-body { fill: var(--dir-up);    stroke: var(--dir-up-deep); }
+.app.arrow-colors .arrow-group.dir-up    .train-cab,
+.app.arrow-colors .arrow-group.dir-up    .train-bumper,
+.app.arrow-colors .arrow-group.dir-up    .train-wheel,
+.app.arrow-colors .arrow-group.dir-up    .train-coupling { fill: var(--dir-up-deep); }
+
+.app.arrow-colors .arrow-group.dir-down  .train-body { fill: var(--dir-down);  stroke: var(--dir-down-deep); }
+.app.arrow-colors .arrow-group.dir-down  .train-cab,
+.app.arrow-colors .arrow-group.dir-down  .train-bumper,
+.app.arrow-colors .arrow-group.dir-down  .train-wheel,
+.app.arrow-colors .arrow-group.dir-down  .train-coupling { fill: var(--dir-down-deep); }
+
+.app.arrow-colors .arrow-group.dir-left  .train-body { fill: var(--dir-left);  stroke: var(--dir-left-deep); }
+.app.arrow-colors .arrow-group.dir-left  .train-cab,
+.app.arrow-colors .arrow-group.dir-left  .train-bumper,
+.app.arrow-colors .arrow-group.dir-left  .train-wheel,
+.app.arrow-colors .arrow-group.dir-left  .train-coupling { fill: var(--dir-left-deep); }
+
+.app.arrow-colors .arrow-group.dir-right .train-body { fill: var(--dir-right); stroke: var(--dir-right-deep); }
+.app.arrow-colors .arrow-group.dir-right .train-cab,
+.app.arrow-colors .arrow-group.dir-right .train-bumper,
+.app.arrow-colors .arrow-group.dir-right .train-wheel,
+.app.arrow-colors .arrow-group.dir-right .train-coupling { fill: var(--dir-right-deep); }
 
 .game-footer {
   display: flex;

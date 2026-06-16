@@ -1464,26 +1464,17 @@ function buildArrowEl(arrow) {
   const pts = arrow.cells.map(([r, c]) => cellToXY(r, c));
   const head = pts[pts.length - 1];
   const { dr, dc } = DIRS[arrow.dir];
-  // For a single-cell cord the tail sits a short way behind the head, but
-  // must stay inside the cell's own footprint so it never overlaps a
-  // neighbouring cord's cell.
   const headBack = pts.length > 1
     ? pts[pts.length - 2]
     : { x: head.x - dc * g.cell * TAIL_OFFSET, y: head.y - dr * g.cell * TAIL_OFFSET };
 
-  // Stroke stops short of the head tip so the triangle sits cleanly on the end,
-  // and everything is sized a bit smaller than the cell so neighbouring cords
-  // never visually touch or overlap.
   const tip = { x: head.x + dc * g.cell * 0.36, y: head.y + dr * g.cell * 0.36 };
   const base = { x: head.x - dc * g.cell * 0.16, y: head.y - dr * g.cell * 0.16 };
-
   const strokeW = g.cell * 0.16;
   const linePts = pts.slice(0, -1).concat([base]);
   if (pts.length === 1) linePts.unshift(headBack);
 
-  // Wide, invisible hit area running the whole length of the cord (tail to the
-  // arrow tip) so a tap anywhere along the rope — not just on the arrowhead —
-  // selects it. Added first so it sits behind the visible parts.
+  // Wide invisible hit area — tapped anywhere along the train selects it.
   const hitPts = pts.length > 1 ? pts.concat([tip]) : [headBack, tip];
   const hit = document.createElementNS(SVG_NS, "polyline");
   hit.setAttribute("class", "arrow-hit");
@@ -1491,30 +1482,149 @@ function buildArrowEl(arrow) {
   hit.setAttribute("stroke-width", String(g.cell * 0.72));
   group.appendChild(hit);
 
+  // ── TRAIN VISUALS ─────────────────────────────────────────────────────────
+  // All visible train elements live in this wrapper so animateLeave can
+  // translate the whole train as a unit in the travel direction.
+  const visual = document.createElementNS(SVG_NS, "g");
+  visual.setAttribute("class", "train-visual");
+  group.appendChild(visual);
+
+  const CW = g.cell * 0.70;  // car dimension along travel axis
+  const CH = g.cell * 0.58;  // car dimension perpendicular to travel
+  const WR = g.cell * 0.08;  // wheel radius
+
+  for (let i = 0; i < pts.length; i++) {
+    const pt = pts[i];
+    const isLoco = i === pts.length - 1;
+
+    // Direction this particular car travels through (used to orient it).
+    let ldr, ldc;
+    if (pts.length === 1) { ldr = dr; ldc = dc; }
+    else if (i === 0) {
+      const nx = pts[1]; ldc = nx.x > pt.x ? 1 : nx.x < pt.x ? -1 : 0; ldr = nx.y > pt.y ? 1 : nx.y < pt.y ? -1 : 0;
+    } else {
+      const px = pts[i - 1]; ldc = pt.x > px.x ? 1 : pt.x < px.x ? -1 : 0; ldr = pt.y > px.y ? 1 : pt.y < px.y ? -1 : 0;
+    }
+    // SVG rotate: 0=right, 90=down, 180=left, 270=up. All car geometry is
+    // defined in "going right" orientation then rotated into place.
+    const angle = ldc === 1 ? 0 : ldr === 1 ? 90 : ldc === -1 ? 180 : 270;
+
+    const carGrp = document.createElementNS(SVG_NS, "g");
+    carGrp.setAttribute("class", "train-car" + (isLoco ? " train-loco" : ""));
+    carGrp.setAttribute("transform", `translate(${pt.x.toFixed(2)},${pt.y.toFixed(2)}) rotate(${angle})`);
+
+    // Car body: CW wide (x-axis = travel), CH tall (y-axis = perp)
+    const body = document.createElementNS(SVG_NS, "rect");
+    body.setAttribute("class", "train-body");
+    body.setAttribute("x", (-CW / 2).toFixed(2));
+    body.setAttribute("y", (-CH / 2).toFixed(2));
+    body.setAttribute("width", CW.toFixed(2));
+    body.setAttribute("height", CH.toFixed(2));
+    body.setAttribute("rx", (g.cell * 0.09).toFixed(2));
+    carGrp.appendChild(body);
+
+    if (isLoco) {
+      // Darker cab overlay on the front half (positive-x = front).
+      const cab = document.createElementNS(SVG_NS, "rect");
+      cab.setAttribute("class", "train-cab");
+      cab.setAttribute("x", (CW * 0.06).toFixed(2));
+      cab.setAttribute("y", (-CH / 2).toFixed(2));
+      cab.setAttribute("width", (CW * 0.44).toFixed(2));
+      cab.setAttribute("height", CH.toFixed(2));
+      cab.setAttribute("rx", (g.cell * 0.09).toFixed(2));
+      carGrp.appendChild(cab);
+
+      // Bumper bar at the very front.
+      const bump = document.createElementNS(SVG_NS, "rect");
+      bump.setAttribute("class", "train-bumper");
+      bump.setAttribute("x", (CW / 2).toFixed(2));
+      bump.setAttribute("y", (-CH * 0.28).toFixed(2));
+      bump.setAttribute("width", (g.cell * 0.09).toFixed(2));
+      bump.setAttribute("height", (CH * 0.56).toFixed(2));
+      bump.setAttribute("rx", (g.cell * 0.04).toFixed(2));
+      carGrp.appendChild(bump);
+
+      // Single cab window centred in the front half.
+      const win = document.createElementNS(SVG_NS, "rect");
+      win.setAttribute("class", "train-window");
+      win.setAttribute("x", (CW * 0.10).toFixed(2));
+      win.setAttribute("y", (-CH * 0.26).toFixed(2));
+      win.setAttribute("width", (CW * 0.28).toFixed(2));
+      win.setAttribute("height", (CH * 0.52).toFixed(2));
+      win.setAttribute("rx", (g.cell * 0.04).toFixed(2));
+      carGrp.appendChild(win);
+    } else {
+      // Two passenger windows per cargo car.
+      for (const offX of [-CW * 0.20, CW * 0.12]) {
+        const win = document.createElementNS(SVG_NS, "rect");
+        win.setAttribute("class", "train-window");
+        win.setAttribute("x", (offX - CW * 0.11).toFixed(2));
+        win.setAttribute("y", (-CH * 0.26).toFixed(2));
+        win.setAttribute("width", (CW * 0.22).toFixed(2));
+        win.setAttribute("height", (CH * 0.52).toFixed(2));
+        win.setAttribute("rx", (g.cell * 0.04).toFixed(2));
+        carGrp.appendChild(win);
+      }
+    }
+
+    // Wheels — top and bottom in local coords = perpendicular to travel.
+    for (const side of [-1, 1]) {
+      for (const wx of [-CW * 0.26, CW * 0.26]) {
+        const wheel = document.createElementNS(SVG_NS, "circle");
+        wheel.setAttribute("class", "train-wheel");
+        wheel.setAttribute("cx", wx.toFixed(2));
+        wheel.setAttribute("cy", (side * (CH / 2 + WR * 0.5)).toFixed(2));
+        wheel.setAttribute("r", WR.toFixed(2));
+        carGrp.appendChild(wheel);
+      }
+    }
+
+    visual.appendChild(carGrp);
+  }
+
+  // Coupling bars linking adjacent cars.
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const segH = Math.abs(b.x - a.x) > Math.abs(b.y - a.y);
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const cw = segH ? g.cell * 0.18 : g.cell * 0.07;
+    const ch = segH ? g.cell * 0.07 : g.cell * 0.18;
+    const coupling = document.createElementNS(SVG_NS, "rect");
+    coupling.setAttribute("class", "train-coupling");
+    coupling.setAttribute("x", (cx - cw / 2).toFixed(2));
+    coupling.setAttribute("y", (cy - ch / 2).toFixed(2));
+    coupling.setAttribute("width", cw.toFixed(2));
+    coupling.setAttribute("height", ch.toFixed(2));
+    coupling.setAttribute("rx", "2");
+    visual.appendChild(coupling);
+  }
+  // ── END TRAIN VISUALS ─────────────────────────────────────────────────────
+
+  // Invisible compatibility elements — animateLeave() reads and updates these
+  // to drive the track-following math; they are hidden via CSS.
   const poly = document.createElementNS(SVG_NS, "polyline");
   poly.setAttribute("class", "arrow-stroke");
   poly.setAttribute("points", linePts.map((p) => `${p.x},${p.y}`).join(" "));
   poly.setAttribute("stroke-width", String(strokeW));
   group.appendChild(poly);
 
-  // Small knot tied at the tail end of the cord.
-  const tail = pts.length > 1 ? pts[0] : headBack;
+  const tailPt = pts.length > 1 ? pts[0] : headBack;
   const knot = document.createElementNS(SVG_NS, "circle");
   knot.setAttribute("class", "arrow-knot");
-  knot.setAttribute("cx", String(tail.x));
-  knot.setAttribute("cy", String(tail.y));
+  knot.setAttribute("cx", String(tailPt.x));
+  knot.setAttribute("cy", String(tailPt.y));
   knot.setAttribute("r", String(g.cell * 0.13));
   group.appendChild(knot);
 
-  // Arrowhead triangle pointing in the travel direction.
-  const hw = g.cell * 0.24; // half width
-  const perp = { x: -dr, y: dc }; // perpendicular unit-ish (dr/dc are 0/±1)
-  const p1 = `${tip.x},${tip.y}`;
-  const p2 = `${base.x + perp.x * hw},${base.y + perp.y * hw}`;
-  const p3 = `${base.x - perp.x * hw},${base.y - perp.y * hw}`;
+  const hw = g.cell * 0.24;
+  const perp = { x: -dr, y: dc };
   const tri = document.createElementNS(SVG_NS, "polygon");
   tri.setAttribute("class", "arrow-head");
-  tri.setAttribute("points", `${p1} ${p2} ${p3}`);
+  tri.setAttribute("points", [
+    `${tip.x},${tip.y}`,
+    `${base.x + perp.x * hw},${base.y + perp.y * hw}`,
+    `${base.x - perp.x * hw},${base.y - perp.y * hw}`,
+  ].join(" "));
   group.appendChild(tri);
 
   const press = () => { if (!arrow.removed) group.classList.add("press"); };
@@ -1523,11 +1633,7 @@ function buildArrowEl(arrow) {
   group.addEventListener("pointerup", release);
   group.addEventListener("pointerleave", release);
   group.addEventListener("pointercancel", release);
-
-  group.addEventListener("click", () => {
-    release();
-    handleClick(arrow, group);
-  });
+  group.addEventListener("click", () => { release(); handleClick(arrow, group); });
   return group;
 }
 
@@ -1635,6 +1741,11 @@ function animateLeave(arrow, group, onDone) {
       `${(base.x + perp.x * hw).toFixed(2)},${(base.y + perp.y * hw).toFixed(2)}`,
       `${(base.x - perp.x * hw).toFixed(2)},${(base.y - perp.y * hw).toFixed(2)}`,
     ].join(" "));
+
+    // Slide the train visual in the travel direction so the whole train
+    // drives off the board rather than dissolving in place.
+    const visual = group.querySelector(".train-visual");
+    if (visual) visual.setAttribute("transform", `translate(${(dc * shift).toFixed(2)},${(dr * shift).toFixed(2)})`);
 
     group.style.opacity = t < 0.55 ? "1" : String(Math.max(0, 1 - (t - 0.55) / 0.45));
 
