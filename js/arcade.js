@@ -89,6 +89,9 @@ const Arcade = (() => {
   }
 
   function openGame(game) {
+    // Games with a `launch` callback just navigate elsewhere instead of mounting.
+    if (typeof game.launch === "function") { game.launch(); return; }
+
     active = game;
     el.title.textContent = t(game.nameKey);
     el.score.textContent = "";

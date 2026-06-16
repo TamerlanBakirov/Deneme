@@ -727,9 +727,12 @@ body {
 }
 
 .arcade-card-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--ink);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .arcade-card-desc {

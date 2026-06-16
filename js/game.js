@@ -1575,6 +1575,16 @@ setupLanguage();
 applyStaticTranslations();
 renderCollection();
 renderAchievements();
+// Add Knot Escape as the first card in the mini-games grid — clicking it
+// launches the main game at the player's current level.
+(window.ARCADE_GAMES = window.ARCADE_GAMES || []).unshift({
+  id: "knot-escape",
+  emoji: "🪢",
+  nameKey: "game_knot_name",
+  descKey: "game_knot_desc",
+  accent: "var(--accent-deep)",
+  launch: () => playLevel(state.level),
+});
 Arcade.renderGrid();
 Ads.init();
 updatePremiumUi();
