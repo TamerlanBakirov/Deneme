@@ -61,9 +61,9 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
         transition:transform .35s var(--ease-spring); transform: rotateY(0deg); --mem-rot: 0deg; }
       .mem-card.flipped .mem-flip, .mem-card.matched .mem-flip { --mem-rot: 180deg; transform: rotateY(180deg); }
       .mem-face { position:absolute; inset:0; border-radius:16px; display:flex; align-items:center;
-        justify-content:center; font-size:30px; line-height:1; backface-visibility:hidden;
+        justify-content:center; font-size:40px; line-height:1; backface-visibility:hidden;
         box-shadow:0 4px 12px rgba(60,45,20,.08); }
-      .mem-face-back { background:var(--panel); color:var(--muted); font-size:22px; transform: rotateY(0deg); }
+      .mem-face-back { background:var(--panel); color:var(--muted); font-size:28px; transform: rotateY(0deg); }
       .mem-face-front { background:var(--accent-soft); transform: rotateY(180deg); }
       .mem-card.matched .mem-face-front { background:var(--accent-soft); }
       .mem-card.matched .mem-flip { animation: mem-pulse .5s var(--ease-out); }
@@ -83,9 +83,9 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       .mem-card.matched { opacity:.65; }
       .mem-card.peeking .mem-flip { transform: rotateY(180deg); --mem-rot: 180deg; }
 
-      .mem-fonts-1 .mem-face { font-size:34px; }
-      .mem-fonts-2 .mem-face { font-size:26px; }
-      .mem-fonts-3 .mem-face { font-size:20px; }
+      .mem-fonts-1 .mem-face { font-size:48px; }
+      .mem-fonts-2 .mem-face { font-size:36px; }
+      .mem-fonts-3 .mem-face { font-size:28px; }
 
       .mem-overlay { position:absolute; inset:0; border-radius:16px; display:flex;
         flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center;
