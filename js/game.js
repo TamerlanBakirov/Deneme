@@ -1534,22 +1534,26 @@ function buildArrowEl(arrow) {
       cab.setAttribute("rx", (g.cell * 0.09).toFixed(2));
       carGrp.appendChild(cab);
 
-      // Bumper bar at the very front.
-      const bump = document.createElementNS(SVG_NS, "rect");
-      bump.setAttribute("class", "train-bumper");
-      bump.setAttribute("x", (CW / 2).toFixed(2));
-      bump.setAttribute("y", (-CH * 0.28).toFixed(2));
-      bump.setAttribute("width", (g.cell * 0.09).toFixed(2));
-      bump.setAttribute("height", (CH * 0.56).toFixed(2));
-      bump.setAttribute("rx", (g.cell * 0.04).toFixed(2));
-      carGrp.appendChild(bump);
+      // Prominent pointed nose — acts like the original arrowhead, makes the
+      // exit direction unambiguous. Triangle tip points in the travel direction.
+      const noseBase = CW / 2 - g.cell * 0.02;
+      const noseTip  = CW / 2 + g.cell * 0.19;
+      const noseHalf = CH * 0.40;
+      const nose = document.createElementNS(SVG_NS, "polygon");
+      nose.setAttribute("class", "train-nose");
+      nose.setAttribute("points", [
+        `${noseBase.toFixed(2)},${(-noseHalf).toFixed(2)}`,
+        `${noseTip.toFixed(2)},0`,
+        `${noseBase.toFixed(2)},${noseHalf.toFixed(2)}`,
+      ].join(" "));
+      carGrp.appendChild(nose);
 
-      // Single cab window centred in the front half.
+      // Cab window on the front half.
       const win = document.createElementNS(SVG_NS, "rect");
       win.setAttribute("class", "train-window");
       win.setAttribute("x", (CW * 0.10).toFixed(2));
       win.setAttribute("y", (-CH * 0.26).toFixed(2));
-      win.setAttribute("width", (CW * 0.28).toFixed(2));
+      win.setAttribute("width", (CW * 0.24).toFixed(2));
       win.setAttribute("height", (CH * 0.52).toFixed(2));
       win.setAttribute("rx", (g.cell * 0.04).toFixed(2));
       carGrp.appendChild(win);

@@ -1431,10 +1431,15 @@ body {
   pointer-events: none;
 }
 
+.train-nose {
+  fill: var(--rope-deep);
+  pointer-events: none;
+}
+
 /* Blocked — flash red */
 .arrow-group.blocked .train-body { fill: var(--heart); stroke: var(--heart); }
 .arrow-group.blocked .train-cab,
-.arrow-group.blocked .train-bumper,
+.arrow-group.blocked .train-nose,
 .arrow-group.blocked .train-wheel,
 .arrow-group.blocked .train-coupling { fill: var(--heart); }
 
@@ -1473,7 +1478,7 @@ body {
 
 .arrow-group.hint .train-body,
 .arrow-group.hint .train-cab,
-.arrow-group.hint .train-bumper { fill: var(--accent); }
+.arrow-group.hint .train-nose { fill: var(--accent); }
 .arrow-group.hint .train-body   { stroke: var(--accent-deep, var(--accent)); }
 .arrow-group.hint .train-wheel,
 .arrow-group.hint .train-coupling { fill: var(--accent-deep, var(--accent)); }
@@ -1502,25 +1507,25 @@ body {
 /* Direction colours for train cars */
 .app.arrow-colors .arrow-group.dir-up    .train-body { fill: var(--dir-up);    stroke: var(--dir-up-deep); }
 .app.arrow-colors .arrow-group.dir-up    .train-cab,
-.app.arrow-colors .arrow-group.dir-up    .train-bumper,
+.app.arrow-colors .arrow-group.dir-up    .train-nose,
 .app.arrow-colors .arrow-group.dir-up    .train-wheel,
 .app.arrow-colors .arrow-group.dir-up    .train-coupling { fill: var(--dir-up-deep); }
 
 .app.arrow-colors .arrow-group.dir-down  .train-body { fill: var(--dir-down);  stroke: var(--dir-down-deep); }
 .app.arrow-colors .arrow-group.dir-down  .train-cab,
-.app.arrow-colors .arrow-group.dir-down  .train-bumper,
+.app.arrow-colors .arrow-group.dir-down  .train-nose,
 .app.arrow-colors .arrow-group.dir-down  .train-wheel,
 .app.arrow-colors .arrow-group.dir-down  .train-coupling { fill: var(--dir-down-deep); }
 
 .app.arrow-colors .arrow-group.dir-left  .train-body { fill: var(--dir-left);  stroke: var(--dir-left-deep); }
 .app.arrow-colors .arrow-group.dir-left  .train-cab,
-.app.arrow-colors .arrow-group.dir-left  .train-bumper,
+.app.arrow-colors .arrow-group.dir-left  .train-nose,
 .app.arrow-colors .arrow-group.dir-left  .train-wheel,
 .app.arrow-colors .arrow-group.dir-left  .train-coupling { fill: var(--dir-left-deep); }
 
 .app.arrow-colors .arrow-group.dir-right .train-body { fill: var(--dir-right); stroke: var(--dir-right-deep); }
 .app.arrow-colors .arrow-group.dir-right .train-cab,
-.app.arrow-colors .arrow-group.dir-right .train-bumper,
+.app.arrow-colors .arrow-group.dir-right .train-nose,
 .app.arrow-colors .arrow-group.dir-right .train-wheel,
 .app.arrow-colors .arrow-group.dir-right .train-coupling { fill: var(--dir-right-deep); }
 
