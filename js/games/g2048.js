@@ -366,7 +366,13 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     if (gained > 0) {
       api.playClick();
       api.vibrate(10);
-      if (api.soundOn()) api.tone(440, 0.05, "sine");
+      // Brighter note for bigger merges (pitch tracks the largest tile made).
+      if (api.soundOn()) {
+        let maxMerge = 0;
+        for (const m of merges) if (m.value > maxMerge) maxMerge = m.value;
+        const pitch = 300 + Math.min(Math.log2(maxMerge || 4), 12) * 42;
+        api.tone(pitch, 0.07, "triangle");
+      }
     } else {
       api.vibrate(6);
     }
@@ -447,7 +453,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     h.textContent = stars > 0 ? ArcadeUI.t("level_complete") : ArcadeUI.t("level_failed");
 
     const starRow = document.createElement("div");
-    ArcadeUI.renderStars(starRow, stars);
+    ArcadeUI.renderStars(starRow, stars, { api });
 
     const p1 = document.createElement("p");
     p1.textContent = `${api.t("score_label")}: ${score}`;

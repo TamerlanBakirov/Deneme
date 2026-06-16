@@ -250,11 +250,13 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
       matched += 1;
       streak += 1;
       updateStreak();
-      if (api.soundOn()) api.tone(520, 0.08);
+      // Pitch climbs with the combo streak for a satisfying escalation.
+      if (api.soundOn()) api.tone(520 + Math.min(streak - 1, 6) * 70, 0.09, "triangle");
       if (matched === pairs) win();
     } else {
       streak = 0;
       updateStreak();
+      if (api.soundOn()) api.tone(180, 0.12, "sine");
       busy = true;
       const a = first;
       const b = card;
@@ -310,7 +312,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     h.textContent = stars > 0 ? ArcadeUI.t("level_complete") : ArcadeUI.t("level_failed");
 
     const starRow = document.createElement("div");
-    ArcadeUI.renderStars(starRow, stars);
+    ArcadeUI.renderStars(starRow, stars, { api });
 
     const p1 = document.createElement("p");
     p1.textContent = `${api.t("moves_label")}: ${moves} • ${fmtTime(secs)}`;

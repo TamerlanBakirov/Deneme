@@ -566,6 +566,11 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     cellOwner[r][c] = dragColor;
     path.push([r, c]);
     api.vibrate(4);
+    // Satisfying "connect" tone when this color just joined both endpoints.
+    if (isEndpoint(r, c) && endpointColor(r, c) === dragColor && isColorComplete(dragColor)) {
+      api.vibrate(12);
+      if (api.soundOn()) api.tone(440 + (dragColor % 8) * 45, 0.1, "triangle");
+    }
   }
 
   function onPointerMove(ev) {
@@ -636,7 +641,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     h.textContent = ArcadeUI.t("level_complete");
 
     const starRow = document.createElement("div");
-    ArcadeUI.renderStars(starRow, stars);
+    ArcadeUI.renderStars(starRow, stars, { api });
 
     const p1 = document.createElement("p");
     p1.textContent = `${L("redraws")}: ${redraws}`;

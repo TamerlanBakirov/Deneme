@@ -119,13 +119,28 @@ window.ArcadeUI = (function () {
   }
 
   // ---- Star row (mirrors the win-overlay's .star-row / .star.filled) ----
-  function renderStars(container, earned) {
+  // opts: { animate (default true), api } — when animating, earned stars pop in
+  // one-by-one and (if api+sound) each fires an ascending chime in sync.
+  const STAR_NOTES = [523.25, 659.25, 783.99]; // C5 - E5 - G5 (bright major triad)
+  function renderStars(container, earned, opts) {
+    opts = opts || {};
+    const animate = opts.animate !== false;
+    const api = opts.api;
     container.innerHTML = "";
     container.classList.add("star-row");
+    container.classList.toggle("animate", animate);
+    const base = 0.12, step = 0.2;
     for (let s = 0; s < 3; s++) {
       const star = document.createElement("span");
       star.className = "star" + (s < earned ? " filled" : "");
       star.textContent = "★";
+      if (animate && s < earned) {
+        const delay = base + s * step;
+        star.style.animationDelay = delay + "s";
+        if (api && api.tone && api.soundOn && api.soundOn()) {
+          setTimeout(() => api.tone(STAR_NOTES[s] || 784, 0.22, "triangle"), (delay + 0.04) * 1000);
+        }
+      }
       container.appendChild(star);
     }
   }

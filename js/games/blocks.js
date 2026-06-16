@@ -617,8 +617,10 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
 
     api.vibrate(totalLines > 1 ? [20, 40, 20] : 18);
     if (api.soundOn()) {
-      api.tone(620, 0.08, "triangle");
-      if (totalLines > 1) trackTimeout(() => api.tone(820, 0.12, "triangle"), 90);
+      // Pitch climbs with the combo streak; multi-line clears add a sparkle.
+      const basePitch = 560 + Math.min(combo - 1, 6) * 60;
+      api.tone(basePitch, 0.08, "triangle");
+      if (totalLines > 1) trackTimeout(() => api.tone(basePitch + 220, 0.12, "triangle"), 90);
     }
 
     // Score popup for the line-clear bonus, centered over the cleared area.
@@ -668,14 +670,22 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     if (levelEnded) return;
     levelEnded = true;
     over = true;
-    api.vibrate([30, 60, 30]);
-    if (api.soundOn()) {
-      api.tone(330, 0.14, "sawtooth");
-      setTimeout(() => api.tone(196, 0.22, "sawtooth"), 130);
-    }
 
     const target = levelTarget();
     const stars = computeStars(score, target);
+
+    api.vibrate([30, 60, 30]);
+    if (api.soundOn()) {
+      if (stars > 0) {
+        // Rising win chime when the target was reached.
+        api.tone(523, 0.12, "triangle");
+        setTimeout(() => api.tone(784, 0.2, "triangle"), 120);
+      } else {
+        // Gentle descending tone when the level was failed.
+        api.tone(330, 0.14, "sawtooth");
+        setTimeout(() => api.tone(196, 0.22, "sawtooth"), 130);
+      }
+    }
     const progress = ArcadeUI.recordResult("blocks", TOTAL_LEVELS, level, stars);
     const totalStars = progress.stars.reduce((a, b) => a + b, 0);
     api.saveBest(totalStars);
@@ -687,7 +697,7 @@ window.ARCADE_GAMES = window.ARCADE_GAMES || [];
     h.textContent = stars > 0 ? ArcadeUI.t("level_complete") : ArcadeUI.t("level_failed");
 
     const starRow = document.createElement("div");
-    ArcadeUI.renderStars(starRow, stars);
+    ArcadeUI.renderStars(starRow, stars, { api });
 
     const p1 = document.createElement("p");
     p1.textContent = `${api.t("score_label")}: ${score} / ${target}`;
