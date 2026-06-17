@@ -1338,6 +1338,38 @@ body {
   transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Floating camera controls for the 3D board */
+.board3d-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.b3d-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--panel);
+  color: var(--accent-deep, var(--accent));
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(40, 30, 15, 0.22);
+  transition: transform 0.12s var(--ease-out), background 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.b3d-btn:active {
+  transform: scale(0.9);
+  background: var(--accent-soft);
+}
+
 .board-panel {
   fill: var(--board-panel);
 }

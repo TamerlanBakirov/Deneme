@@ -1245,6 +1245,15 @@ function cellToXY(r, c) {
 
 function renderBoard() {
   const g = state.geom;
+
+  // Prefer the 3D renderer when WebGL is available. It owns the board, camera
+  // and train visuals; the SVG path below is the 2D fallback.
+  if (window.Board3D && Board3D.ensure()) {
+    Board3D.onPick((arrow) => handleClick(arrow, null));
+    Board3D.build(state);
+    return;
+  }
+
   el.board.setAttribute("viewBox", `0 0 ${g.width} ${g.height}`);
   el.board.innerHTML = "";
 
@@ -1340,6 +1349,7 @@ function setupBoardZoom() {
   let pan = null;
 
   el.boardWrap.addEventListener("pointerdown", (e) => {
+    if (window.Board3D && Board3D.isReady()) return; // 3D camera owns input
     if (state.boardIntroTimer) {
       clearTimeout(state.boardIntroTimer);
       state.boardIntroTimer = null;
@@ -1771,13 +1781,14 @@ function once(fn) {
 
 function handleClick(arrow, group) {
   if (arrow.removed) return;
+  const use3D = window.Board3D && Board3D.isReady();
 
   if (!isRemovable(arrow)) {
     loseHeart();
     playTone(180, 0.15, "square");
     vibrate(60);
-    group.classList.add("blocked");
-    setTimeout(() => group.classList.remove("blocked"), 380);
+    if (use3D) Board3D.flashBlocked(arrow);
+    else if (group) { group.classList.add("blocked"); setTimeout(() => group.classList.remove("blocked"), 380); }
     return;
   }
 
@@ -1787,12 +1798,14 @@ function handleClick(arrow, group) {
   updateUndoButton();
   playWhoosh();
   vibrate(12);
-  group.classList.remove("hint");
-  group.classList.add("leaving");
-  animateLeave(arrow, group, () => {
-    group.remove();
-    if (state.arrows.every((a) => a.removed)) onWin();
-  });
+  const finish = () => { if (state.arrows.every((a) => a.removed)) onWin(); };
+  if (use3D) {
+    Board3D.animateLeave(arrow, finish);
+  } else if (group) {
+    group.classList.remove("hint");
+    group.classList.add("leaving");
+    animateLeave(arrow, group, () => { group.remove(); finish(); });
+  }
 }
 
 // ---------- Undo & hint ----------
@@ -1809,13 +1822,17 @@ function undoMove() {
   arrow.removed = false;
   state.moveCount = Math.max(0, state.moveCount - 1);
 
-  const groupEl = buildArrowEl(arrow);
-  groupEl.classList.add("enter");
-  groupEl.addEventListener("animationend", function done() {
-    groupEl.classList.remove("enter");
-    groupEl.removeEventListener("animationend", done);
-  });
-  el.board.appendChild(groupEl);
+  if (window.Board3D && Board3D.isReady()) {
+    Board3D.addTrain(arrow);
+  } else {
+    const groupEl = buildArrowEl(arrow);
+    groupEl.classList.add("enter");
+    groupEl.addEventListener("animationend", function done() {
+      groupEl.classList.remove("enter");
+      groupEl.removeEventListener("animationend", done);
+    });
+    el.board.appendChild(groupEl);
+  }
 
   updateUndoButton();
   playTone(440, 0.06);
@@ -1826,13 +1843,18 @@ function undoMove() {
 
 // Pulse a cord that can be safely removed right now, to nudge a stuck player.
 function showHint() {
-  const candidates = state.arrows.filter((a) => !a.removed && a.el && isRemovable(a));
+  const use3D = window.Board3D && Board3D.isReady();
+  const candidates = state.arrows.filter((a) => !a.removed && (use3D || a.el) && isRemovable(a));
   if (!candidates.length) return;
   const arrow = candidates[Math.floor(Math.random() * candidates.length)];
-  const groupEl = arrow.el;
-  el.board.appendChild(groupEl); // raise above neighbours so the glow shows
-  groupEl.classList.add("hint");
-  setTimeout(() => groupEl.classList.remove("hint"), 2100);
+  if (use3D) {
+    Board3D.hint(arrow);
+  } else {
+    const groupEl = arrow.el;
+    el.board.appendChild(groupEl); // raise above neighbours so the glow shows
+    groupEl.classList.add("hint");
+    setTimeout(() => groupEl.classList.remove("hint"), 2100);
+  }
   playTone(620, 0.07);
   el.btnHint.classList.add("flash");
   setTimeout(() => el.btnHint.classList.remove("flash"), 400);
