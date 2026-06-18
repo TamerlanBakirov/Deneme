@@ -1,57 +1,218 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arrows – Puzzle Escape</title>
+  <title>Tamerlan Bakirov</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <div class="app">
 
-    <!-- Level select screen -->
-    <section id="menu-screen" class="screen">
-      <h1 class="title">Arrows <span>Puzzle Escape</span></h1>
-      <p class="subtitle">Extract every arrow without a collision.</p>
-      <div id="level-grid" class="level-grid"></div>
-    </section>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container nav-content">
+      <a href="#" class="logo">TB</a>
+      <ul class="nav-links">
+        <li><a href="#about">Hakkimda</a></li>
+        <li><a href="#projects">Projeler</a></li>
+        <li><a href="#skills">Yetenekler</a></li>
+        <li><a href="#contact">Iletisim</a></li>
+      </ul>
+      <button class="nav-toggle" aria-label="Menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
 
-    <!-- Game screen -->
-    <section id="game-screen" class="screen hidden">
-      <header class="game-header">
-        <button id="btn-menu" class="icon-btn" title="Back to levels">&#8592;</button>
-        <div class="level-info">
-          <span class="level-label">Level <span id="level-number">1</span></span>
-          <span class="move-label">Moves: <span id="move-count">0</span></span>
-        </div>
-        <button id="btn-restart" class="icon-btn" title="Restart level">&#8635;</button>
-      </header>
-
-      <div class="board-wrap">
-        <div id="board" class="board"></div>
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="gradient-orb orb-1"></div>
+      <div class="gradient-orb orb-2"></div>
+      <div class="gradient-orb orb-3"></div>
+    </div>
+    <div class="container hero-content">
+      <p class="hero-greeting">Merhaba, ben</p>
+      <h1 class="hero-name">Tamerlan Bakirov</h1>
+      <p class="hero-tagline">Yazilim Gelistirici & Yaratici Kodlayici</p>
+      <div class="hero-actions">
+        <a href="#projects" class="btn btn-primary">Projelerimi Gor</a>
+        <a href="#contact" class="btn btn-outline">Iletisime Gec</a>
       </div>
+    </div>
+    <div class="scroll-indicator">
+      <div class="scroll-arrow"></div>
+    </div>
+  </section>
 
-      <footer class="game-footer">
-        <button id="btn-undo" class="action-btn">Undo</button>
-        <button id="btn-hint" class="action-btn">Hint</button>
-      </footer>
-    </section>
-
-    <!-- Win overlay -->
-    <div id="win-overlay" class="overlay hidden">
-      <div class="overlay-card">
-        <h2>Level Complete!</h2>
-        <p id="win-stats"></p>
-        <div class="overlay-actions">
-          <button id="btn-replay" class="action-btn">Replay</button>
-          <button id="btn-next" class="action-btn primary">Next Level</button>
+  <!-- About Section -->
+  <section id="about" class="section">
+    <div class="container">
+      <h2 class="section-title">Hakkimda</h2>
+      <div class="about-grid">
+        <div class="about-text">
+          <p>Yazilim gelistirme dunyasinda tutkuyla calisan bir gelistiriciyim. Modern web teknolojileri ile yaratici ve kullanici dostu uygulamalar gelistiriyorum.</p>
+          <p>Surekli ogrenmeye ve kendimi gelistirmeye adanmis biriyim. Yeni teknolojileri kesfetmek ve bunlari projelerime entegre etmek benim icin heyecan verici.</p>
+        </div>
+        <div class="about-stats">
+          <div class="stat-card">
+            <span class="stat-number" data-target="10">0</span>
+            <span class="stat-label">Proje</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number" data-target="5">0</span>
+            <span class="stat-label">Teknoloji</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number" data-target="100">0</span>
+            <span class="stat-label">Commit</span>
+          </div>
         </div>
       </div>
     </div>
+  </section>
 
-  </div>
+  <!-- Projects Section -->
+  <section id="projects" class="section section-alt">
+    <div class="container">
+      <h2 class="section-title">Projeler</h2>
+      <div class="projects-grid">
 
-  <script src="js/levels.js"></script>
-  <script src="js/game.js"></script>
+        <a href="game.html" class="project-card">
+          <div class="project-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+          </div>
+          <h3 class="project-title">Arrows Puzzle Escape</h3>
+          <p class="project-desc">Ok yonlerini kullanarak bulmacalari cozdugumuz eglenceli bir puzzle oyunu. 50'den fazla seviye ile meydan okuma!</p>
+          <div class="project-tags">
+            <span class="tag">JavaScript</span>
+            <span class="tag">CSS3</span>
+            <span class="tag">HTML5</span>
+          </div>
+          <span class="project-link">Oyna &rarr;</span>
+        </a>
+
+        <div class="project-card">
+          <div class="project-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <h3 class="project-title">Portfolio Sitesi</h3>
+          <p class="project-desc">Modern ve responsive kisisel web sitesi. Animasyonlar ve interaktif tasarim ile zenginlestirilmis.</p>
+          <div class="project-tags">
+            <span class="tag">HTML5</span>
+            <span class="tag">CSS3</span>
+            <span class="tag">JavaScript</span>
+          </div>
+          <span class="project-link">Bu Sayfa</span>
+        </div>
+
+        <div class="project-card project-card-cta">
+          <div class="project-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </div>
+          <h3 class="project-title">Yakinda</h3>
+          <p class="project-desc">Yeni projeler uzerinde calisiyorum. GitHub profilimi takip edin!</p>
+          <span class="project-link">Takipte Kal</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Skills Section -->
+  <section id="skills" class="section">
+    <div class="container">
+      <h2 class="section-title">Yetenekler</h2>
+      <div class="skills-grid">
+        <div class="skill-card">
+          <div class="skill-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+          </div>
+          <h3>HTML & CSS</h3>
+          <div class="skill-bar"><div class="skill-fill" data-width="90"></div></div>
+        </div>
+        <div class="skill-card">
+          <div class="skill-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0l1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"></path>
+            </svg>
+          </div>
+          <h3>JavaScript</h3>
+          <div class="skill-bar"><div class="skill-fill" data-width="85"></div></div>
+        </div>
+        <div class="skill-card">
+          <div class="skill-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+            </svg>
+          </div>
+          <h3>Git & GitHub</h3>
+          <div class="skill-bar"><div class="skill-fill" data-width="80"></div></div>
+        </div>
+        <div class="skill-card">
+          <div class="skill-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <h3>Responsive Tasarim</h3>
+          <div class="skill-bar"><div class="skill-fill" data-width="88"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="section section-alt">
+    <div class="container">
+      <h2 class="section-title">Iletisim</h2>
+      <div class="contact-content">
+        <p class="contact-text">Bir proje fikriniz mi var? Birlikte calisalim!</p>
+        <div class="contact-links">
+          <a href="https://github.com/TamerlanBakirov" class="contact-card" target="_blank" rel="noopener">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+            </svg>
+            <span>GitHub</span>
+          </a>
+          <a href="mailto:tamerlan858@gmail.com" class="contact-card">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <span>E-posta</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 Tamerlan Bakirov. Tum haklari saklidir.</p>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
 </body>
 </html>

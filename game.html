@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arrows – Puzzle Escape</title>
+  <link rel="stylesheet" href="css/game.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Level select screen -->
+    <section id="menu-screen" class="screen">
+      <h1 class="title">Arrows <span>Puzzle Escape</span></h1>
+      <p class="subtitle">Extract every arrow without a collision.</p>
+      <div id="level-grid" class="level-grid"></div>
+    </section>
+
+    <!-- Game screen -->
+    <section id="game-screen" class="screen hidden">
+      <header class="game-header">
+        <button id="btn-menu" class="icon-btn" title="Back to levels">&#8592;</button>
+        <div class="level-info">
+          <span class="level-label">Level <span id="level-number">1</span></span>
+          <span class="move-label">Moves: <span id="move-count">0</span></span>
+        </div>
+        <button id="btn-restart" class="icon-btn" title="Restart level">&#8635;</button>
+      </header>
+
+      <div class="board-wrap">
+        <div id="board" class="board"></div>
+      </div>
+
+      <footer class="game-footer">
+        <button id="btn-undo" class="action-btn">Undo</button>
+        <button id="btn-hint" class="action-btn">Hint</button>
+      </footer>
+    </section>
+
+    <!-- Win overlay -->
+    <div id="win-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <h2>Level Complete!</h2>
+        <p id="win-stats"></p>
+        <div class="overlay-actions">
+          <button id="btn-replay" class="action-btn">Replay</button>
+          <button id="btn-next" class="action-btn primary">Next Level</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="js/levels.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
