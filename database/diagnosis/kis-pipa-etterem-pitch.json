@@ -15,8 +15,8 @@
     "whatsapp": {
       "channel": "whatsapp",
       "to": "+36 1 234 5678",
-      "message_hu": "Szia! 👋\n\nWeboldal készítő vagyok, és Budapest-i restaurant vállalkozásoknak segítek modern weboldalakkal több ügyfelet szerezni.\n\nKészítettem egy ingyenes előnézetet a Kis Pipa Étterem számára - érdekli?\n\nKötelezettségmentes, 15 perces konzultáció: https://calendly.com/PLACEHOLDER\n\nÜdv, AI Web Agency",
-      "message_en": "Hi! 👋\n\nI create modern websites for restaurant businesses in Budapest.\n\nI prepared a free website preview for Kis Pipa Étterem - interested?\n\nNo-obligation 15min consultation: https://calendly.com/PLACEHOLDER\n\nBest, AI Web Agency"
+      "message_hu": "Szia! 👋\n\nWeboldal készítő vagyok, és Budapest-i restaurant vállalkozásoknak segítek modern weboldalakkal több ügyfelet szerezni.\n\nKészítettem egy ingyenes előnézetet a Kis Pipa Étterem számára - érdekli?\n\nKötelezettségmentes, 15 perces Google Meet konzultáció - válaszoljon és küldöm a meghívót!",
+      "message_en": "Hi! 👋\n\nI create modern websites for restaurant businesses in Budapest.\n\nI prepared a free website preview for Kis Pipa Étterem - interested?\n\nNo-obligation 15min Google Meet consultation - just reply and I'll send the invite!"
     },
     "instagram": {
       "channel": "instagram",

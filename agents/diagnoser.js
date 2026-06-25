@@ -144,8 +144,8 @@ function generateOutreachMessage(lead, analysis, conversionIncrease, packageName
     offer_en: `I've prepared a custom preview of what your new website could look like. I'd love to show it to you — no obligation, just a quick look.`,
     package_mention_hu: `${packageName} csomagunk (€${pkg.price}) tartalmazza: ${pkg.features.slice(0, 4).join(', ')}.`,
     package_mention_en: `My ${packageName} package (€${pkg.price}) includes: ${pkg.features.slice(0, 4).join(', ')}.`,
-    cta_hu: `Nyitottak lennének egy gyors 15 perces hívásra ezen a héten? Itt választhat időpontot: ${config.agency.calendly_link}`,
-    cta_en: `Would you be open to a quick 15-minute call this week? You can pick a time that works: ${config.agency.calendly_link}`,
+    cta_hu: `Nyitottak lennének egy gyors 15 perces Google Meet hívásra ezen a héten? Válaszoljon erre az üzenetre, és küldök egy meghívót a megbeszélt időpontra.`,
+    cta_en: `Would you be open to a quick 15-minute Google Meet call this week? Just reply to this message and I'll send you a meeting invite for a time that works.`,
     closing_hu: `Üdvözlettel,\nAI Web Agency\n${config.agency.owner_email}`,
     closing_en: `Best regards,\nAI Web Agency\n${config.agency.owner_email}`
   };

@@ -82,7 +82,7 @@ function checkPersonalization(lead, outreachMessage) {
   }
 
   if (msg.includes('PLACEHOLDER')) {
-    issues.push({ field: 'personalization', severity: 'warning', message: 'Calendly link placeholder - update before sending' });
+    issues.push({ field: 'personalization', severity: 'warning', message: 'Placeholder text found - update before sending' });
   }
 
   if (msg.includes('[') && msg.includes(']') && msg.match(/\[.*?(NAME|COMPANY|CITY|PHONE).*?\]/)) {

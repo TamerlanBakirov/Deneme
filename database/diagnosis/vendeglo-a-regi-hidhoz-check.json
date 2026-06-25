@@ -9,7 +9,7 @@
     {
       "field": "personalization",
       "severity": "warning",
-      "message": "Calendly link placeholder - update before sending"
+      "message": "Placeholder text found - update before sending"
     },
     {
       "field": "grammar",

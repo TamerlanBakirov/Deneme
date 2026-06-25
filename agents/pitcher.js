@@ -47,7 +47,7 @@ ${outreach.offer || `I've prepared a custom preview of what your new website cou
 
 ${outreach.package_mention || `Starting from just €${config.pricing.packages[0].price}, you can have a professional online presence.`}
 
-${outreach.cta || `Would you be open to a quick 15-minute call? Pick a time here: ${config.agency.calendly_link}`}
+${outreach.cta || `Would you be open to a quick 15-minute Google Meet call? Just reply and I'll send you a meeting invite.`}
 
 Best regards,
 AI Web Agency
@@ -66,7 +66,7 @@ Készítettem egy egyedi előnézetet arról, hogyan nézhetne ki az Önök új 
 
 ${pkg.name ? `${pkg.name} csomagunk (€${pkg.price}) tartalmazza: ${(pkg.features || []).slice(0, 3).join(', ')}.` : ''}
 
-Nyitottak lennének egy gyors 15 perces beszélgetésre? Itt választhat időpontot: ${config.agency.calendly_link}
+Nyitottak lennének egy gyors 15 perces Google Meet beszélgetésre? Válaszoljon erre az üzenetre, és küldök egy meghívót.
 
 Üdvözlettel,
 AI Web Agency
@@ -97,7 +97,7 @@ Weboldal készítő vagyok, és ${lead.city}-i ${lead.category} vállalkozásokn
 
 Készítettem egy ingyenes előnézetet a ${lead.name} számára - érdekli?
 
-Kötelezettségmentes, 15 perces konzultáció: ${config.agency.calendly_link}
+Kötelezettségmentes, 15 perces Google Meet konzultáció - válaszoljon és küldöm a meghívót!
 
 Üdv, AI Web Agency`,
     message_en: `Hi! 👋
@@ -106,7 +106,7 @@ I create modern websites for ${lead.category} businesses in ${lead.city}.
 
 I prepared a free website preview for ${lead.name} - interested?
 
-No-obligation 15min consultation: ${config.agency.calendly_link}
+No-obligation 15min Google Meet consultation - just reply and I'll send the invite!
 
 Best, AI Web Agency`
   };

@@ -15,8 +15,8 @@
     "whatsapp": {
       "channel": "whatsapp",
       "to": "+36 1 456 7891",
-      "message_hu": "Szia! 👋\n\nWeboldal készítő vagyok, és Budapest-i gym vállalkozásoknak segítek modern weboldalakkal több ügyfelet szerezni.\n\nKészítettem egy ingyenes előnézetet a FitLife Edzőterem számára - érdekli?\n\nKötelezettségmentes, 15 perces konzultáció: https://calendly.com/PLACEHOLDER\n\nÜdv, AI Web Agency",
-      "message_en": "Hi! 👋\n\nI create modern websites for gym businesses in Budapest.\n\nI prepared a free website preview for FitLife Edzőterem - interested?\n\nNo-obligation 15min consultation: https://calendly.com/PLACEHOLDER\n\nBest, AI Web Agency"
+      "message_hu": "Szia! 👋\n\nWeboldal készítő vagyok, és Budapest-i gym vállalkozásoknak segítek modern weboldalakkal több ügyfelet szerezni.\n\nKészítettem egy ingyenes előnézetet a FitLife Edzőterem számára - érdekli?\n\nKötelezettségmentes, 15 perces Google Meet konzultáció - válaszoljon és küldöm a meghívót!",
+      "message_en": "Hi! 👋\n\nI create modern websites for gym businesses in Budapest.\n\nI prepared a free website preview for FitLife Edzőterem - interested?\n\nNo-obligation 15min Google Meet consultation - just reply and I'll send the invite!"
     },
     "instagram": {
       "channel": "instagram",

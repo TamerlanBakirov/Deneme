@@ -3,7 +3,8 @@
     "name": "AI Web Agency",
     "version": "1.0.0",
     "owner_email": "tamerlan858@gmail.com",
-    "calendly_link": "https://calendly.com/PLACEHOLDER",
+    "meeting_link": "google_meet",
+    "meeting_email": "tamerlan858@gmail.com",
     "timezone": "Europe/Budapest"
   },
   "target": {

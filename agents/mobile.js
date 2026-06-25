@@ -53,8 +53,8 @@ const FAQ_RESPONSES = {
   },
   process: {
     triggers: ['how does it work', 'process', 'steps', 'hogyan működik', 'folyamat', 'lépések'],
-    response_en: `Here's how it works:\n\n1. Free 15-min consultation call\n2. We discuss your needs and pick the right package\n3. I create your custom website design\n4. You review and request changes\n5. We launch your new website!\n\nReady to start? Book a call: ${config.agency.calendly_link}`,
-    response_hu: `Így működik:\n\n1. Ingyenes 15 perces konzultációs hívás\n2. Megbeszéljük igényeit és kiválasztjuk a megfelelő csomagot\n3. Elkészítem az egyedi weboldal designt\n4. Ön átnézi és kéri a változtatásokat\n5. Elindítjuk az új weboldalát!\n\nKészen áll? Foglaljon időpontot: ${config.agency.calendly_link}`
+    response_en: `Here's how it works:\n\n1. Free 15-min Google Meet consultation\n2. We discuss your needs and pick the right package\n3. I create your custom website design\n4. You review and request changes\n5. We launch your new website!\n\nReady to start? Just reply with a time that works and I'll send you a Google Meet invite!`,
+    response_hu: `Így működik:\n\n1. Ingyenes 15 perces Google Meet konzultáció\n2. Megbeszéljük igényeit és kiválasztjuk a megfelelő csomagot\n3. Elkészítem az egyedi weboldal designt\n4. Ön átnézi és kéri a változtatásokat\n5. Elindítjuk az új weboldalát!\n\nKészen áll? Válaszoljon egy Önnek megfelelő időponttal, és küldöm a Google Meet meghívót!`
   },
   what_included: {
     triggers: ['what\'s included', 'include', 'features', 'mit tartalmaz', 'funkciók'],
@@ -130,8 +130,8 @@ function generateAutoResponse(message, lead) {
     return {
       auto_reply: true,
       response: lang === 'hu'
-        ? `Örülök az érdeklődésnek! 🎉\n\nSzeretném megmutatni személyesen is, mit tudunk nyújtani a ${lead.name} számára.\n\nFoglaljon egy ingyenes 15 perces konzultációt itt: ${config.agency.calendly_link}\n\nVárom a beszélgetést!`
-        : `Great to hear your interest! 🎉\n\nI'd love to show you personally what we can do for ${lead.name}.\n\nBook a free 15-minute consultation here: ${config.agency.calendly_link}\n\nLooking forward to chatting!`,
+        ? `Örülök az érdeklődésnek! 🎉\n\nSzeretném megmutatni személyesen is, mit tudunk nyújtani a ${lead.name} számára.\n\nMondjon egy Önnek megfelelő időpontot, és küldöm a Google Meet meghívót az ingyenes 15 perces konzultációhoz!\n\nVárom a beszélgetést!`
+        : `Great to hear your interest! 🎉\n\nI'd love to show you personally what we can do for ${lead.name}.\n\nJust tell me a time that works for you and I'll send a Google Meet invite for a free 15-minute consultation!\n\nLooking forward to chatting!`,
       intent,
       action: 'schedule_meeting'
     };
@@ -184,7 +184,8 @@ export function processResponse(leadId, message, channel = 'email') {
       lead_id: leadId,
       business_name: lead.name,
       scheduled_at: new Date().toISOString(),
-      calendly_link: config.agency.calendly_link
+      meeting_method: 'google_meet',
+      meeting_email: config.agency.meeting_email
     });
     console.log(`[Mobile] Meeting scheduling initiated for ${lead.name}`);
   } else if (autoResponse.action === 'mark_rejected') {
