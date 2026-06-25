@@ -3,11 +3,42 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 const config = loadConfig();
 
-// Real, verified Unsplash stock photos per category (free, no API key needed)
+// Real, verified Unsplash stock photos per category (free, no API key needed).
+// Images are fetched at build time and embedded as base64 data URIs so the
+// generated HTML is fully self-contained and renders without any network.
 const UNSPLASH = 'https://images.unsplash.com/';
-function img(id, w = 800, h = null) {
-  const crop = h ? `&h=${h}&fit=crop` : '';
-  return `${UNSPLASH}${id}?w=${w}&q=80&auto=format${crop}`;
+
+function heroUrl(id) { return `${UNSPLASH}${id}?w=1200&q=55&auto=format&fit=crop&h=675`; }
+function aboutUrl(id) { return `${UNSPLASH}${id}?w=700&q=60&auto=format&fit=crop&h=525`; }
+function galleryUrl(id) { return `${UNSPLASH}${id}?w=500&q=55&auto=format&fit=crop&h=375`; }
+
+// url -> "data:image/jpeg;base64,..." cache, populated by prefetchPhotos()
+const photoCache = new Map();
+
+function src(url) {
+  return photoCache.get(url) || url;
+}
+
+async function prefetchPhotos(category) {
+  const photos = getPhotos(category);
+  const urls = new Set([
+    heroUrl(photos.hero),
+    aboutUrl(photos.gallery[0].id),
+    ...photos.gallery.map(g => galleryUrl(g.id))
+  ]);
+
+  for (const url of urls) {
+    if (photoCache.has(url)) continue;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      photoCache.set(url, `data:image/jpeg;base64,${buf.toString('base64')}`);
+    } catch (err) {
+      console.error(`[Builder] Photo fetch failed (${url}): ${err.message}`);
+      // Leave uncached; src() falls back to the remote URL.
+    }
+  }
 }
 
 const PHOTOS = {
@@ -373,7 +404,7 @@ function generateHTML(lead, diagnosis) {
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
       background:
         linear-gradient(135deg, rgba(15,23,42,0.88), rgba(15,23,42,0.72)),
-        url('${img(photos.hero, 1600, 900)}');
+        url('${src(heroUrl(photos.hero))}');
       background-size: cover; background-position: center;
       position: relative; overflow: hidden; padding: 120px 24px 80px;
     }
@@ -720,7 +751,7 @@ function generateHTML(lead, diagnosis) {
           </ul>
         </div>
         <div class="about-img-wrap reveal reveal-delay-2">
-          <img src="${img(photos.gallery[0].id, 800, 600)}" alt="${lead.name}" loading="lazy">
+          <img src="${src(aboutUrl(photos.gallery[0].id))}" alt="${lead.name}" loading="lazy">
           <div class="about-badge">
             <div class="about-badge-num">${cat.stats[2].num}${cat.stats[2].suffix}</div>
             <div class="about-badge-label">${cat.stats[2].label}</div>
@@ -754,7 +785,7 @@ function generateHTML(lead, diagnosis) {
       <div class="gallery-grid">
         ${photos.gallery.map((g, i) => `
         <div class="gallery-item reveal reveal-delay-${(i % 3) + 1}">
-          <img src="${img(g.id, 600, 450)}" alt="${g.cap}" loading="lazy">
+          <img src="${src(galleryUrl(g.id))}" alt="${g.cap}" loading="lazy">
           <div class="gallery-cap">${g.cap}</div>
         </div>`).join('')}
       </div>
@@ -975,6 +1006,8 @@ export async function buildForLead(lead) {
 
   const diagnosisPath = `database/diagnosis/${slug}.json`;
   const diagnosis = existsSync(diagnosisPath) ? loadJSON(diagnosisPath) : null;
+
+  await prefetchPhotos(lead.category);
 
   const html = generateHTML(lead, diagnosis);
   writeFileSync(`${projectDir}/index.html`, html, 'utf-8');
