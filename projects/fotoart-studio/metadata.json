@@ -1,0 +1,17 @@
+{
+  "business_name": "FotoArt Stúdió",
+  "city": "Budapest",
+  "category": "photographer",
+  "generated_at": "2026-06-25T19:48:43.483Z",
+  "files": [
+    "index.html",
+    "react/App.jsx"
+  ],
+  "colors": {
+    "primary": "#1F2937",
+    "secondary": "#111827",
+    "accent": "#F59E0B",
+    "bg": "#FFFFFF"
+  },
+  "recommended_package": "Premium"
+}

@@ -1,0 +1,17 @@
+{
+  "business_name": "Pozsonyi Kisvendéglő",
+  "city": "Budapest",
+  "category": "restaurant",
+  "generated_at": "2026-06-25T19:48:43.411Z",
+  "files": [
+    "index.html",
+    "react/App.jsx"
+  ],
+  "colors": {
+    "primary": "#D4451A",
+    "secondary": "#2C1810",
+    "accent": "#F5A623",
+    "bg": "#FFF8F0"
+  },
+  "recommended_package": "Premium"
+}

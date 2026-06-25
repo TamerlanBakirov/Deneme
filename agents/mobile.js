@@ -232,7 +232,7 @@ export function getStatus() {
     meetings_scheduled: responses.meetings_scheduled.length,
     requires_human: responses.requires_human.length,
     messages_sent_today: campaigns.sent_today || 0,
-    daily_limit: DAILY_LIMIT
+    daily_limit: config.goals.daily_outreach_limit
   };
 }
 

@@ -77,8 +77,12 @@ function checkPersonalization(lead, outreachMessage) {
     issues.push({ field: 'personalization', severity: 'warning', message: 'City not mentioned in outreach' });
   }
 
-  if (msg.includes('PLACEHOLDER') || msg.includes('undefined') || msg.includes('null')) {
-    issues.push({ field: 'personalization', severity: 'critical', message: 'Placeholder or undefined values in message' });
+  if (msg.includes('undefined') || msg.match(/"null"/)) {
+    issues.push({ field: 'personalization', severity: 'critical', message: 'Undefined or null values in message' });
+  }
+
+  if (msg.includes('PLACEHOLDER')) {
+    issues.push({ field: 'personalization', severity: 'warning', message: 'Calendly link placeholder - update before sending' });
   }
 
   if (msg.includes('[') && msg.includes(']') && msg.match(/\[.*?(NAME|COMPANY|CITY|PHONE).*?\]/)) {

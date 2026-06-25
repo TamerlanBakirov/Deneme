@@ -6,7 +6,7 @@ import { runFilmmaker } from '../agents/filmmaker.js';
 import { runChecker } from '../agents/checker.js';
 import { runPitcher } from '../agents/pitcher.js';
 import { runMobile } from '../agents/mobile.js';
-import { closeBrowser } from '../lib/browser.js';
+// Browser only needed if agents use Playwright (currently disabled due to proxy)
 
 const config = loadConfig();
 
@@ -73,7 +73,7 @@ async function runFullPipeline() {
     await runStage(stageName);
   }
 
-  await closeBrowser();
+  // closeBrowser() not needed - agents run without Playwright
 
   const totalElapsed = ((Date.now() - pipelineStart) / 1000).toFixed(1);
   console.log(`\n${'═'.repeat(50)}`);
@@ -129,7 +129,7 @@ async function runSingleCity(cityName) {
   await runStage('pitch');
   await runStage('monitor');
 
-  await closeBrowser();
+  // closeBrowser() not needed - agents run without Playwright
   printPipelineSummary();
 }
 
@@ -154,7 +154,7 @@ if (args.includes('--full-pipeline')) {
 } else if (args.includes('--stage')) {
   const stageIdx = args.indexOf('--stage');
   const stageName = args[stageIdx + 1];
-  runStage(stageName).then(() => closeBrowser()).catch(err => {
+  runStage(stageName).then(() => {}).catch(err => {
     console.error('Stage failed:', err);
     process.exit(1);
   });

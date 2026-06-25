@@ -1,0 +1,17 @@
+{
+  "business_name": "Tiszta Ház Takarítás",
+  "city": "Budapest",
+  "category": "cleaning service",
+  "generated_at": "2026-06-25T19:48:43.489Z",
+  "files": [
+    "index.html",
+    "react/App.jsx"
+  ],
+  "colors": {
+    "primary": "#2563EB",
+    "secondary": "#1E3A5F",
+    "accent": "#3B82F6",
+    "bg": "#F8FAFC"
+  },
+  "recommended_package": "Premium"
+}

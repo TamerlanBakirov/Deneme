@@ -1,0 +1,17 @@
+{
+  "business_name": "Debreceni Rétes Háza",
+  "city": "Debrecen",
+  "category": "bakery",
+  "generated_at": "2026-06-25T19:48:43.547Z",
+  "files": [
+    "index.html",
+    "react/App.jsx"
+  ],
+  "colors": {
+    "primary": "#92400E",
+    "secondary": "#451A03",
+    "accent": "#FCD34D",
+    "bg": "#FFF7ED"
+  },
+  "recommended_package": "Premium"
+}

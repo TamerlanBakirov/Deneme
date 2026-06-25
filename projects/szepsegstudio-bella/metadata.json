@@ -1,0 +1,17 @@
+{
+  "business_name": "Szépségstúdió Bella",
+  "city": "Budapest",
+  "category": "beauty salon",
+  "generated_at": "2026-06-25T19:48:43.497Z",
+  "files": [
+    "index.html",
+    "react/App.jsx"
+  ],
+  "colors": {
+    "primary": "#DB2777",
+    "secondary": "#831843",
+    "accent": "#F9A8D4",
+    "bg": "#FDF2F8"
+  },
+  "recommended_package": "Premium"
+}
