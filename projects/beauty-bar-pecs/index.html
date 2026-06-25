@@ -57,12 +57,15 @@
     /* ═══════ HERO ═══════ */
     .hero {
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #2d1b4e 0%, #4c1d95 50%, #7c3aed 100%);
+      background:
+        linear-gradient(135deg, rgba(15,23,42,0.88), rgba(15,23,42,0.72)),
+        url('https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1600&q=80&auto=format&h=900&fit=crop');
+      background-size: cover; background-position: center;
       position: relative; overflow: hidden; padding: 120px 24px 80px;
     }
     .hero::before {
       content: ''; position: absolute; inset: 0;
-      background: radial-gradient(circle at 25% 75%, rgba(168,85,247,0.12) 0%, transparent 50%), radial-gradient(circle at 75% 25%, rgba(232,121,249,0.08) 0%, transparent 50%);
+      background: radial-gradient(circle at 25% 75%, rgba(168,85,247,0.12) 0%, transparent 50%), radial-gradient(circle at 75% 25%, rgba(232,121,249,0.08) 0%, transparent 50%), linear-gradient(135deg, #a855f722, transparent 60%);
       pointer-events: none;
     }
     .hero::after {
@@ -156,6 +159,59 @@
     .stat-item { text-align: center; }
     .stat-num { font-size: 48px; font-weight: 900; color: #fff; }
     .stat-label { font-size: 15px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+    /* ═══════ GALLERY ═══════ */
+    .gallery-section { background: #f9fafb; }
+    .gallery-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    .gallery-item {
+      position: relative; border-radius: 16px; overflow: hidden;
+      aspect-ratio: 4/3; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .gallery-item img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .gallery-item:hover img { transform: scale(1.08); }
+    .gallery-item::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.5), transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .gallery-item:hover::after { opacity: 1; }
+    .gallery-cap {
+      position: absolute; bottom: 0; left: 0; right: 0; padding: 20px;
+      color: #fff; font-weight: 600; font-size: 15px; z-index: 2;
+      transform: translateY(10px); opacity: 0; transition: all 0.3s;
+    }
+    .gallery-item:hover .gallery-cap { transform: translateY(0); opacity: 1; }
+
+    /* ═══════ ABOUT ═══════ */
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .about-img-wrap {
+      position: relative; border-radius: 24px; overflow: hidden;
+      aspect-ratio: 4/3; box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+    }
+    .about-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .about-badge {
+      position: absolute; bottom: 24px; left: 24px;
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+      padding: 16px 24px; border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    .about-badge-num { font-size: 28px; font-weight: 900; color: var(--accent); }
+    .about-badge-label { font-size: 13px; color: #6b7280; }
+    .about-text h2 { font-size: clamp(28px, 3.5vw, 40px); font-weight: 800; color: #111827; margin-bottom: 20px; letter-spacing: -1px; line-height: 1.2; }
+    .about-text p { font-size: 16px; color: #6b7280; line-height: 1.8; margin-bottom: 16px; }
+    .about-features { list-style: none; margin-top: 24px; display: flex; flex-direction: column; gap: 14px; }
+    .about-features li { display: flex; align-items: center; gap: 12px; font-size: 15px; color: #374151; font-weight: 500; }
+    .about-check {
+      width: 24px; height: 24px; min-width: 24px; border-radius: 50%;
+      background: var(--accent-light); color: var(--accent);
+      display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
+    }
 
     /* ═══════ TESTIMONIALS ═══════ */
     .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
@@ -260,6 +316,9 @@
         border-bottom: 1px solid #f3f4f6;
       }
       .services-grid, .testimonials-grid { grid-template-columns: 1fr; }
+      .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+      .about-grid { grid-template-columns: 1fr; gap: 40px; }
+      .about-img-wrap { order: -1; }
       .contact-grid { grid-template-columns: 1fr; gap: 48px; }
       .form-row { grid-template-columns: 1fr; }
       .hero-stats { flex-direction: column; gap: 24px; }
@@ -279,6 +338,7 @@
       <ul class="nav-links" id="navLinks">
         <li><a href="#services">Szolgáltatások</a></li>
         <li><a href="#about">Rólunk</a></li>
+        <li><a href="#gallery">Galéria</a></li>
         <li><a href="#reviews">Vélemények</a></li>
         <li><a href="#contact" class="nav-cta-btn">Foglaljon időpontot</a></li>
       </ul>
@@ -362,6 +422,33 @@
     </div>
   </section>
 
+  <!-- ABOUT -->
+  <section class="section" id="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-text reveal">
+          <span class="section-label">Rólunk</span>
+          <h2>Miért válasszon minket?</h2>
+          <p>Beauty Bar Pécs Pécs egyik legmegbízhatóbb hair salon szolgáltatója. Évek tapasztalatával és elhivatott csapatunkkal mindent megteszünk ügyfeleink elégedettségéért.</p>
+          <p>Számunkra a minőség és a személyes odafigyelés az első. Ezt tükrözi a 4.9★-os értékelésünk és a több ezer visszatérő ügyfelünk.</p>
+          <ul class="about-features">
+            <li><span class="about-check">✓</span> Tapasztalt, képzett szakemberek</li>
+            <li><span class="about-check">✓</span> Korszerű eszközök és technológia</li>
+            <li><span class="about-check">✓</span> Rugalmas időpontok, gyors kiszolgálás</li>
+            <li><span class="about-check">✓</span> Versenyképes árak, átlátható feltételek</li>
+          </ul>
+        </div>
+        <div class="about-img-wrap reveal reveal-delay-2">
+          <img src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800&q=80&auto=format&h=600&fit=crop" alt="Beauty Bar Pécs" loading="lazy">
+          <div class="about-badge">
+            <div class="about-badge-num">12+</div>
+            <div class="about-badge-label">Év tapasztalat</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- STATS -->
   <section class="stats-bar">
     <div class="container">
@@ -378,6 +465,44 @@
         <div class="stat-item reveal">
           <div class="stat-num">12+</div>
           <div class="stat-label">Év tapasztalat</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section class="section gallery-section" id="gallery">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Galéria</span>
+        <h2 class="section-title">Pillanatképek</h2>
+        <p class="section-desc">Tekintse meg munkánkat és környezetünket</p>
+      </div>
+      <div class="gallery-grid">
+        
+        <div class="gallery-item reveal reveal-delay-1">
+          <img src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80&auto=format&h=450&fit=crop" alt="Profi hajformázás" loading="lazy">
+          <div class="gallery-cap">Profi hajformázás</div>
+        </div>
+        <div class="gallery-item reveal reveal-delay-2">
+          <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?w=600&q=80&auto=format&h=450&fit=crop" alt="Elegáns szalon" loading="lazy">
+          <div class="gallery-cap">Elegáns szalon</div>
+        </div>
+        <div class="gallery-item reveal reveal-delay-3">
+          <img src="https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=600&q=80&auto=format&h=450&fit=crop" alt="Precíz hajvágás" loading="lazy">
+          <div class="gallery-cap">Precíz hajvágás</div>
+        </div>
+        <div class="gallery-item reveal reveal-delay-1">
+          <img src="https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?w=600&q=80&auto=format&h=450&fit=crop" alt="Hajfestés" loading="lazy">
+          <div class="gallery-cap">Hajfestés</div>
+        </div>
+        <div class="gallery-item reveal reveal-delay-2">
+          <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80&auto=format&h=450&fit=crop" alt="Modern környezet" loading="lazy">
+          <div class="gallery-cap">Modern környezet</div>
+        </div>
+        <div class="gallery-item reveal reveal-delay-3">
+          <img src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=600&q=80&auto=format&h=450&fit=crop" alt="Stílusos megjelenés" loading="lazy">
+          <div class="gallery-cap">Stílusos megjelenés</div>
         </div>
       </div>
     </div>

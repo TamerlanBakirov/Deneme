@@ -3,6 +3,97 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 const config = loadConfig();
 
+// Real, verified Unsplash stock photos per category (free, no API key needed)
+const UNSPLASH = 'https://images.unsplash.com/';
+function img(id, w = 800, h = null) {
+  const crop = h ? `&h=${h}&fit=crop` : '';
+  return `${UNSPLASH}${id}?w=${w}&q=80&auto=format${crop}`;
+}
+
+const PHOTOS = {
+  restaurant: {
+    hero: 'photo-1517248135467-4c7edcad34c4',
+    gallery: [
+      { id: 'photo-1414235077428-338989a2e8c0', cap: 'Elegáns belső tér' },
+      { id: 'photo-1466978913421-dad2ebd01d17', cap: 'Friss fogások' },
+      { id: 'photo-1555396273-367ea4eb4db5', cap: 'Hangulatos asztalok' },
+      { id: 'photo-1565299624946-b28f40a0ae38', cap: 'Házi specialitások' },
+      { id: 'photo-1504674900247-0877df9cc836', cap: 'Gourmet élmények' },
+      { id: 'photo-1414235077428-338989a2e8c0', cap: 'Vendégváró tér' }
+    ]
+  },
+  dentist: {
+    hero: 'photo-1629909613654-28e377c37b09',
+    gallery: [
+      { id: 'photo-1588776814546-1ffcf47267a5', cap: 'Modern rendelő' },
+      { id: 'photo-1606811841689-23dfddce3e95', cap: 'Kényelmes kezelőszék' },
+      { id: 'photo-1612349317150-e413f6a5b16d', cap: 'Korszerű eszközök' },
+      { id: 'photo-1629909613654-28e377c37b09', cap: 'Steril környezet' },
+      { id: 'photo-1588776814546-1ffcf47267a5', cap: 'Szakértő csapat' },
+      { id: 'photo-1606811841689-23dfddce3e95', cap: 'Fájdalommentes ellátás' }
+    ]
+  },
+  'hair salon': {
+    hero: 'photo-1560066984-138dadb4c035',
+    gallery: [
+      { id: 'photo-1521590832167-7bcbfaa6381f', cap: 'Profi hajformázás' },
+      { id: 'photo-1562322140-8baeececf3df', cap: 'Elegáns szalon' },
+      { id: 'photo-1599351431202-1e0f0137899a', cap: 'Precíz hajvágás' },
+      { id: 'photo-1633681926022-84c23e8cb2d6', cap: 'Hajfestés' },
+      { id: 'photo-1560066984-138dadb4c035', cap: 'Modern környezet' },
+      { id: 'photo-1521590832167-7bcbfaa6381f', cap: 'Stílusos megjelenés' }
+    ]
+  },
+  'auto repair': {
+    hero: 'photo-1486262715619-67b85e0b08d3',
+    gallery: [
+      { id: 'photo-1625047509168-a7026f36de04', cap: 'Szakszerű javítás' },
+      { id: 'photo-1530046339160-ce3e530c7d2f', cap: 'Tapasztalt szerelők' },
+      { id: 'photo-1487754180451-c456f719a1fc', cap: 'Motor diagnosztika' },
+      { id: 'photo-1503376780353-7e6692767b70', cap: 'Minden márka' },
+      { id: 'photo-1486262715619-67b85e0b08d3', cap: 'Modern műhely' },
+      { id: 'photo-1625047509168-a7026f36de04', cap: 'Megbízható szerviz' }
+    ]
+  },
+  bakery: {
+    hero: 'photo-1509440159596-0249088772ff',
+    gallery: [
+      { id: 'photo-1517433670267-08bbd4be890f', cap: 'Friss pékáruk' },
+      { id: 'photo-1486427944299-d1955d23e34d', cap: 'Házi sütemények' },
+      { id: 'photo-1555507036-ab1f4038808a', cap: 'Ropogós croissant' },
+      { id: 'photo-1509440159596-0249088772ff', cap: 'Kovászos kenyér' },
+      { id: 'photo-1517433670267-08bbd4be890f', cap: 'Napi frissesség' },
+      { id: 'photo-1486427944299-d1955d23e34d', cap: 'Édes finomságok' }
+    ]
+  },
+  'beauty salon': {
+    hero: 'photo-1560750588-73207b1ef5b8',
+    gallery: [
+      { id: 'photo-1487412947147-5cebf100ffc2', cap: 'Wellness élmény' },
+      { id: 'photo-1570172619644-dfd03ed5d881', cap: 'Relaxáló masszázs' },
+      { id: 'photo-1487070183336-b863922373d4', cap: 'Manikűr & pedikűr' },
+      { id: 'photo-1519415943484-9fa1873496d4', cap: 'Arckezelések' },
+      { id: 'photo-1596178065887-1198b6148b2b', cap: 'Bőrápolás' },
+      { id: 'photo-1560750588-73207b1ef5b8', cap: 'Nyugodt környezet' }
+    ]
+  },
+  default: {
+    hero: 'photo-1497366216548-37526070297c',
+    gallery: [
+      { id: 'photo-1497366811353-6870744d04b2', cap: 'Professzionális csapat' },
+      { id: 'photo-1497366216548-37526070297c', cap: 'Modern környezet' },
+      { id: 'photo-1497366811353-6870744d04b2', cap: 'Minőségi szolgáltatás' },
+      { id: 'photo-1497366216548-37526070297c', cap: 'Ügyfélközpontúság' },
+      { id: 'photo-1497366811353-6870744d04b2', cap: 'Szakértelem' },
+      { id: 'photo-1497366216548-37526070297c', cap: 'Megbízhatóság' }
+    ]
+  }
+};
+
+function getPhotos(category) {
+  return PHOTOS[category] || PHOTOS.default;
+}
+
 const CATEGORY_DATA = {
   restaurant: {
     heroTitle: (name) => `${name}`,
@@ -218,6 +309,7 @@ function getCategoryData(category) {
 
 function generateHTML(lead, diagnosis) {
   const cat = getCategoryData(lead.category);
+  const photos = getPhotos(lead.category);
   const pkg = diagnosis?.recommendation || {};
 
   return `<!DOCTYPE html>
@@ -279,12 +371,15 @@ function generateHTML(lead, diagnosis) {
     /* ═══════ HERO ═══════ */
     .hero {
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      background: ${cat.gradient};
+      background:
+        linear-gradient(135deg, rgba(15,23,42,0.88), rgba(15,23,42,0.72)),
+        url('${img(photos.hero, 1600, 900)}');
+      background-size: cover; background-position: center;
       position: relative; overflow: hidden; padding: 120px 24px 80px;
     }
     .hero::before {
       content: ''; position: absolute; inset: 0;
-      background: ${cat.pattern};
+      background: ${cat.pattern}, linear-gradient(135deg, ${cat.accent}22, transparent 60%);
       pointer-events: none;
     }
     .hero::after {
@@ -378,6 +473,59 @@ function generateHTML(lead, diagnosis) {
     .stat-item { text-align: center; }
     .stat-num { font-size: 48px; font-weight: 900; color: #fff; }
     .stat-label { font-size: 15px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+    /* ═══════ GALLERY ═══════ */
+    .gallery-section { background: #f9fafb; }
+    .gallery-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    .gallery-item {
+      position: relative; border-radius: 16px; overflow: hidden;
+      aspect-ratio: 4/3; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .gallery-item img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .gallery-item:hover img { transform: scale(1.08); }
+    .gallery-item::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.5), transparent 60%);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .gallery-item:hover::after { opacity: 1; }
+    .gallery-cap {
+      position: absolute; bottom: 0; left: 0; right: 0; padding: 20px;
+      color: #fff; font-weight: 600; font-size: 15px; z-index: 2;
+      transform: translateY(10px); opacity: 0; transition: all 0.3s;
+    }
+    .gallery-item:hover .gallery-cap { transform: translateY(0); opacity: 1; }
+
+    /* ═══════ ABOUT ═══════ */
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .about-img-wrap {
+      position: relative; border-radius: 24px; overflow: hidden;
+      aspect-ratio: 4/3; box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+    }
+    .about-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .about-badge {
+      position: absolute; bottom: 24px; left: 24px;
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+      padding: 16px 24px; border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    .about-badge-num { font-size: 28px; font-weight: 900; color: var(--accent); }
+    .about-badge-label { font-size: 13px; color: #6b7280; }
+    .about-text h2 { font-size: clamp(28px, 3.5vw, 40px); font-weight: 800; color: #111827; margin-bottom: 20px; letter-spacing: -1px; line-height: 1.2; }
+    .about-text p { font-size: 16px; color: #6b7280; line-height: 1.8; margin-bottom: 16px; }
+    .about-features { list-style: none; margin-top: 24px; display: flex; flex-direction: column; gap: 14px; }
+    .about-features li { display: flex; align-items: center; gap: 12px; font-size: 15px; color: #374151; font-weight: 500; }
+    .about-check {
+      width: 24px; height: 24px; min-width: 24px; border-radius: 50%;
+      background: var(--accent-light); color: var(--accent);
+      display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700;
+    }
 
     /* ═══════ TESTIMONIALS ═══════ */
     .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
@@ -482,6 +630,9 @@ function generateHTML(lead, diagnosis) {
         border-bottom: 1px solid #f3f4f6;
       }
       .services-grid, .testimonials-grid { grid-template-columns: 1fr; }
+      .gallery-grid { grid-template-columns: repeat(2, 1fr); }
+      .about-grid { grid-template-columns: 1fr; gap: 40px; }
+      .about-img-wrap { order: -1; }
       .contact-grid { grid-template-columns: 1fr; gap: 48px; }
       .form-row { grid-template-columns: 1fr; }
       .hero-stats { flex-direction: column; gap: 24px; }
@@ -501,6 +652,7 @@ function generateHTML(lead, diagnosis) {
       <ul class="nav-links" id="navLinks">
         <li><a href="#services">Szolgáltatások</a></li>
         <li><a href="#about">Rólunk</a></li>
+        <li><a href="#gallery">Galéria</a></li>
         <li><a href="#reviews">Vélemények</a></li>
         <li><a href="#contact" class="nav-cta-btn">${cat.heroCta}</a></li>
       </ul>
@@ -551,6 +703,33 @@ function generateHTML(lead, diagnosis) {
     </div>
   </section>
 
+  <!-- ABOUT -->
+  <section class="section" id="about">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-text reveal">
+          <span class="section-label">Rólunk</span>
+          <h2>Miért válasszon minket?</h2>
+          <p>${lead.name} ${lead.city} egyik legmegbízhatóbb ${lead.category} szolgáltatója. Évek tapasztalatával és elhivatott csapatunkkal mindent megteszünk ügyfeleink elégedettségéért.</p>
+          <p>Számunkra a minőség és a személyes odafigyelés az első. Ezt tükrözi a ${cat.stats[0].num}★-os értékelésünk és a több ezer visszatérő ügyfelünk.</p>
+          <ul class="about-features">
+            <li><span class="about-check">✓</span> Tapasztalt, képzett szakemberek</li>
+            <li><span class="about-check">✓</span> Korszerű eszközök és technológia</li>
+            <li><span class="about-check">✓</span> Rugalmas időpontok, gyors kiszolgálás</li>
+            <li><span class="about-check">✓</span> Versenyképes árak, átlátható feltételek</li>
+          </ul>
+        </div>
+        <div class="about-img-wrap reveal reveal-delay-2">
+          <img src="${img(photos.gallery[0].id, 800, 600)}" alt="${lead.name}" loading="lazy">
+          <div class="about-badge">
+            <div class="about-badge-num">${cat.stats[2].num}${cat.stats[2].suffix}</div>
+            <div class="about-badge-label">${cat.stats[2].label}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- STATS -->
   <section class="stats-bar">
     <div class="container">
@@ -559,6 +738,24 @@ function generateHTML(lead, diagnosis) {
         <div class="stat-item reveal">
           <div class="stat-num">${s.num}${s.suffix}</div>
           <div class="stat-label">${s.label}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section class="section gallery-section" id="gallery">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Galéria</span>
+        <h2 class="section-title">Pillanatképek</h2>
+        <p class="section-desc">Tekintse meg munkánkat és környezetünket</p>
+      </div>
+      <div class="gallery-grid">
+        ${photos.gallery.map((g, i) => `
+        <div class="gallery-item reveal reveal-delay-${(i % 3) + 1}">
+          <img src="${img(g.id, 600, 450)}" alt="${g.cap}" loading="lazy">
+          <div class="gallery-cap">${g.cap}</div>
         </div>`).join('')}
       </div>
     </div>
