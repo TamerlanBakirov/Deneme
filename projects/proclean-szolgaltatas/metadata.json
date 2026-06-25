@@ -2,9 +2,13 @@
   "business_name": "ProClean Szolgáltatás",
   "city": "Budapest",
   "category": "cleaning service",
-  "generated_at": "2026-06-25T21:41:13.451Z",
+  "generated_at": "2026-06-25T21:53:46.204Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

@@ -2,9 +2,13 @@
   "business_name": "Dental Art Fogászat",
   "city": "Budapest",
   "category": "dentist",
-  "generated_at": "2026-06-25T21:41:12.662Z",
+  "generated_at": "2026-06-25T21:53:45.405Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

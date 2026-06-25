@@ -2,9 +2,13 @@
   "business_name": "Régi Idők Péksége",
   "city": "Budapest",
   "category": "bakery",
-  "generated_at": "2026-06-25T21:41:13.402Z",
+  "generated_at": "2026-06-25T21:53:46.150Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

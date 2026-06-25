@@ -2,9 +2,13 @@
   "business_name": "Borbíróság Étterem",
   "city": "Budapest",
   "category": "restaurant",
-  "generated_at": "2026-06-25T21:41:12.507Z",
+  "generated_at": "2026-06-25T21:53:45.225Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

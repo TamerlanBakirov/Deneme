@@ -2,9 +2,13 @@
   "business_name": "Lisztes Kuckó",
   "city": "Debrecen",
   "category": "bakery",
-  "generated_at": "2026-06-25T21:41:13.850Z",
+  "generated_at": "2026-06-25T21:53:46.541Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

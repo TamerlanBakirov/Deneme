@@ -2,9 +2,13 @@
   "business_name": "LaVie Szépségszalon",
   "city": "Budapest",
   "category": "beauty salon",
-  "generated_at": "2026-06-25T21:41:13.694Z",
+  "generated_at": "2026-06-25T21:53:46.410Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

@@ -2,9 +2,13 @@
   "business_name": "Dóm Étterem",
   "city": "Pécs",
   "category": "restaurant",
-  "generated_at": "2026-06-25T21:41:14.010Z",
+  "generated_at": "2026-06-25T21:53:46.721Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

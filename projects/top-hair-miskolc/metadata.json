@@ -2,9 +2,13 @@
   "business_name": "Top Hair Miskolc",
   "city": "Miskolc",
   "category": "hair salon",
-  "generated_at": "2026-06-25T21:41:13.975Z",
+  "generated_at": "2026-06-25T21:53:46.687Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

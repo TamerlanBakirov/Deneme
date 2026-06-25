@@ -2,9 +2,13 @@
   "business_name": "Vendéglő a Régi Hídhoz",
   "city": "Szeged",
   "category": "restaurant",
-  "generated_at": "2026-06-25T21:41:13.876Z",
+  "generated_at": "2026-06-25T21:53:46.565Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

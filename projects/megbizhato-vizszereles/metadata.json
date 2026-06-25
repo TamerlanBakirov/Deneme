@@ -2,9 +2,13 @@
   "business_name": "Megbízható Vízszerelés",
   "city": "Budapest",
   "category": "plumber",
-  "generated_at": "2026-06-25T21:41:13.212Z",
+  "generated_at": "2026-06-25T21:53:45.961Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

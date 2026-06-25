@@ -2,9 +2,13 @@
   "business_name": "Hair Design Studio",
   "city": "Budapest",
   "category": "hair salon",
-  "generated_at": "2026-06-25T21:41:12.871Z",
+  "generated_at": "2026-06-25T21:53:45.612Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }

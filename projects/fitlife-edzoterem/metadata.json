@@ -2,9 +2,13 @@
   "business_name": "FitLife Edzőterem",
   "city": "Budapest",
   "category": "gym",
-  "generated_at": "2026-06-25T21:41:13.412Z",
+  "generated_at": "2026-06-25T21:53:46.161Z",
   "files": [
     "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
   ],
   "recommended_package": "Premium"
 }
