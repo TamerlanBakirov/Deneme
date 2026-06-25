@@ -3,6 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
+      - main
       - claude/ai-web-agency-agents-k7ihep
   workflow_dispatch:
 
