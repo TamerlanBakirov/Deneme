@@ -2,16 +2,9 @@
   "business_name": "MesterGarázs Kft.",
   "city": "Budapest",
   "category": "auto repair",
-  "generated_at": "2026-06-25T19:48:43.445Z",
+  "generated_at": "2026-06-25T21:18:40.424Z",
   "files": [
-    "index.html",
-    "react/App.jsx"
+    "index.html"
   ],
-  "colors": {
-    "primary": "#DC2626",
-    "secondary": "#1F2937",
-    "accent": "#F59E0B",
-    "bg": "#F9FAFB"
-  },
   "recommended_package": "Premium"
 }

@@ -2,16 +2,9 @@
   "business_name": "Gyors Vízszerelő Szolgálat",
   "city": "Budapest",
   "category": "plumber",
-  "generated_at": "2026-06-25T19:48:43.450Z",
+  "generated_at": "2026-06-25T21:18:40.432Z",
   "files": [
-    "index.html",
-    "react/App.jsx"
+    "index.html"
   ],
-  "colors": {
-    "primary": "#2563EB",
-    "secondary": "#1E3A5F",
-    "accent": "#60A5FA",
-    "bg": "#EFF6FF"
-  },
   "recommended_package": "Premium"
 }

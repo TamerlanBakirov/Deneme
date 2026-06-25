@@ -2,16 +2,9 @@
   "business_name": "Glamour Hair Studio",
   "city": "Szeged",
   "category": "hair salon",
-  "generated_at": "2026-06-25T19:48:43.580Z",
+  "generated_at": "2026-06-25T21:18:40.656Z",
   "files": [
-    "index.html",
-    "react/App.jsx"
+    "index.html"
   ],
-  "colors": {
-    "primary": "#8B5CF6",
-    "secondary": "#4C1D95",
-    "accent": "#DDD6FE",
-    "bg": "#FAF5FF"
-  },
   "recommended_package": "Premium"
 }

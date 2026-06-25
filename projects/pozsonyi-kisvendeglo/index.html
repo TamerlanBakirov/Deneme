@@ -3,592 +3,511 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Pozsonyi Kisvendéglő - restaurant in Budapest, Hungary. Professional services with excellent reviews.">
-  <title>Pozsonyi Kisvendéglő | restaurant - Budapest</title>
+  <meta name="description" content="Pozsonyi Kisvendéglő - Professzionális restaurant szolgáltatások Budapest-ban. 2000+ elégedett ügyfél.">
+  <meta name="keywords" content="Pozsonyi Kisvendéglő, restaurant, Budapest, restaurant Budapest">
+  <meta property="og:title" content="Pozsonyi Kisvendéglő | Budapest">
+  <meta property="og:description" content="Autentikus ízek, felejthetetlen élmények Budapest szívében">
+  <meta property="og:type" content="website">
+  <title>Pozsonyi Kisvendéglő | Budapest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --primary: #D4451A;
-      --secondary: #2C1810;
-      --accent: #F5A623;
-      --bg: #FFF8F0;
-      --white: #FFFFFF;
-      --gray-50: #F9FAFB;
-      --gray-100: #F3F4F6;
-      --gray-200: #E5E7EB;
-      --gray-600: #4B5563;
-      --gray-800: #1F2937;
-      --gray-900: #111827;
-    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --accent: #e94560;
+      --accent-light: rgba(233,69,96,0.1);
+    }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: var(--gray-800);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #1f2937;
       line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
-    /* NAVIGATION */
-    nav {
-      background: var(--white);
-      padding: 16px 0;
-      position: fixed;
-      width: 100%;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    /* ═══════ NAVBAR ═══════ */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transition: all 0.3s;
     }
-
-    nav .container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .logo {
-      font-size: 24px;
-      font-weight: 800;
-      color: var(--primary);
-      text-decoration: none;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 32px;
-      list-style: none;
-    }
-
-    .nav-links a {
-      text-decoration: none;
-      color: var(--gray-600);
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-
-    .nav-links a:hover { color: var(--primary); }
-
-    .nav-cta {
-      background: var(--primary);
-      color: var(--white) !important;
-      padding: 10px 24px;
-      border-radius: 8px;
-      font-weight: 600;
-    }
-
-    .nav-cta:hover { opacity: 0.9; }
-
-    .mobile-menu { display: none; cursor: pointer; font-size: 24px; }
-
-    /* HERO */
-    .hero {
-      background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
-      padding: 160px 0 100px;
-      color: var(--white);
-      text-align: center;
-    }
-
-    .hero h1 {
-      font-size: 48px;
-      font-weight: 800;
-      margin-bottom: 20px;
-      line-height: 1.2;
-    }
-
-    .hero p {
-      font-size: 20px;
-      opacity: 0.9;
-      max-width: 600px;
-      margin: 0 auto 32px;
-    }
-
-    .hero-cta {
-      display: inline-block;
-      background: var(--accent);
-      color: var(--secondary);
-      padding: 16px 40px;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: transform 0.2s;
-    }
-
-    .hero-cta:hover { transform: translateY(-2px); }
-
-    .hero-stats {
-      display: flex;
-      justify-content: center;
-      gap: 48px;
-      margin-top: 48px;
-    }
-
-    .stat { text-align: center; }
-    .stat-number { font-size: 36px; font-weight: 800; }
-    .stat-label { font-size: 14px; opacity: 0.8; }
-
-    /* SERVICES */
-    .services {
-      padding: 100px 0;
-      background: var(--bg);
-    }
-
-    .section-title {
-      text-align: center;
-      margin-bottom: 60px;
-    }
-
-    .section-title h2 {
-      font-size: 36px;
-      font-weight: 800;
-      color: var(--gray-900);
-      margin-bottom: 12px;
-    }
-
-    .section-title p {
-      font-size: 18px;
-      color: var(--gray-600);
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    .services-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 32px;
-    }
-
-    .service-card {
-      background: var(--white);
-      padding: 40px 32px;
-      border-radius: 16px;
-      text-align: center;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    .navbar.scrolled { box-shadow: 0 4px 30px rgba(0,0,0,0.08); }
+    .navbar .container { display: flex; justify-content: space-between; align-items: center; height: 72px; }
+    .nav-brand { font-size: 22px; font-weight: 800; color: #111827; text-decoration: none; letter-spacing: -0.5px; }
+    .nav-brand span { color: var(--accent); }
+    .nav-links { display: flex; align-items: center; gap: 36px; list-style: none; }
+    .nav-links a { text-decoration: none; color: #6b7280; font-weight: 500; font-size: 15px; transition: color 0.2s; }
+    .nav-links a:hover { color: #111827; }
+    .nav-cta-btn {
+      background: linear-gradient(135deg, #e94560, #f5a623); color: #fff !important;
+      padding: 10px 28px; border-radius: 50px; font-weight: 600; font-size: 14px;
+      box-shadow: 0 4px 15px rgba(233,69,96,0.1);
       transition: transform 0.2s, box-shadow 0.2s;
     }
+    .nav-cta-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+    .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
+    .hamburger span { display: block; width: 24px; height: 2px; background: #374151; margin: 6px 0; transition: all 0.3s; border-radius: 2px; }
 
-    .service-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+    /* ═══════ HERO ═══════ */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
+      position: relative; overflow: hidden; padding: 120px 24px 80px;
     }
-
-    .service-icon {
-      font-size: 48px;
-      margin-bottom: 20px;
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 20% 80%, rgba(233,69,96,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(245,166,35,0.1) 0%, transparent 50%);
+      pointer-events: none;
     }
-
-    .service-card h3 {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      color: var(--gray-900);
+    .hero::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
+      background: linear-gradient(to top, rgba(255,255,255,0.03), transparent);
     }
-
-    .service-card p {
-      color: var(--gray-600);
-      font-size: 15px;
+    .hero-content { position: relative; z-index: 2; text-align: center; max-width: 800px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+      padding: 8px 20px; border-radius: 50px; margin-bottom: 32px;
+      border: 1px solid rgba(255,255,255,0.15);
     }
-
-    /* ABOUT */
-    .about {
-      padding: 100px 0;
+    .hero-badge span { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; }
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 72px); font-weight: 900; color: #fff;
+      line-height: 1.1; margin-bottom: 24px; letter-spacing: -2px;
     }
-
-    .about-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 64px;
-      align-items: center;
+    .hero-sub {
+      font-size: clamp(17px, 2vw, 21px); color: rgba(255,255,255,0.8);
+      max-width: 600px; margin: 0 auto 40px; line-height: 1.7;
     }
-
-    .about-content h2 {
-      font-size: 36px;
-      font-weight: 800;
-      margin-bottom: 20px;
-      color: var(--gray-900);
+    .hero-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: linear-gradient(135deg, #e94560, #f5a623); color: #fff;
+      padding: 16px 36px; border-radius: 50px; font-size: 16px; font-weight: 700;
+      text-decoration: none; border: none; cursor: pointer;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-
-    .about-content p {
-      color: var(--gray-600);
-      margin-bottom: 16px;
-      font-size: 16px;
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.1); color: #fff;
+      padding: 16px 36px; border-radius: 50px; font-size: 16px; font-weight: 600;
+      text-decoration: none; border: 1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px); transition: all 0.2s;
     }
-
-    .about-image {
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      border-radius: 20px;
-      height: 400px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--white);
-      font-size: 64px;
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+    .hero-stats {
+      display: flex; justify-content: center; gap: 48px; margin-top: 64px;
+      padding-top: 48px; border-top: 1px solid rgba(255,255,255,0.1);
     }
+    .hero-stat { text-align: center; }
+    .hero-stat-num { font-size: 36px; font-weight: 900; color: #fff; }
+    .hero-stat-label { font-size: 14px; color: rgba(255,255,255,0.6); margin-top: 4px; }
 
-    /* TESTIMONIALS */
-    .testimonials {
-      padding: 100px 0;
-      background: var(--gray-50);
+    /* ═══════ SECTIONS ═══════ */
+    .section { padding: 100px 0; }
+    .section-header { text-align: center; margin-bottom: 64px; }
+    .section-label {
+      display: inline-block; font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 2px; color: var(--accent); margin-bottom: 16px;
+      background: var(--accent-light); padding: 6px 16px; border-radius: 50px;
     }
+    .section-title { font-size: clamp(32px, 4vw, 44px); font-weight: 800; color: #111827; line-height: 1.2; letter-spacing: -1px; }
+    .section-desc { font-size: 18px; color: #6b7280; max-width: 600px; margin: 16px auto 0; }
 
-    .testimonials-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 32px;
+    /* ═══════ SERVICES GRID ═══════ */
+    .services-section { background: #f9fafb; }
+    .services-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
     }
+    .service-card {
+      background: #fff; padding: 40px 32px; border-radius: 20px;
+      border: 1px solid #f3f4f6;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative; overflow: hidden;
+    }
+    .service-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(135deg, #e94560, #f5a623); opacity: 0; transition: opacity 0.3s;
+    }
+    .service-card:hover { transform: translateY(-8px); box-shadow: 0 20px 60px rgba(0,0,0,0.08); border-color: transparent; }
+    .service-card:hover::before { opacity: 1; }
+    .service-icon-wrap {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: var(--accent-light); display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px; color: var(--accent);
+    }
+    .service-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #111827; }
+    .service-card p { font-size: 15px; color: #6b7280; line-height: 1.7; }
 
+    /* ═══════ STATS BAR ═══════ */
+    .stats-bar {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%); padding: 60px 0; position: relative; overflow: hidden;
+    }
+    .stats-bar::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 80%, rgba(233,69,96,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(245,166,35,0.1) 0%, transparent 50%); }
+    .stats-grid { display: flex; justify-content: center; gap: 80px; position: relative; z-index: 2; }
+    .stat-item { text-align: center; }
+    .stat-num { font-size: 48px; font-weight: 900; color: #fff; }
+    .stat-label { font-size: 15px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+    /* ═══════ TESTIMONIALS ═══════ */
+    .testimonials-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
     .testimonial-card {
-      background: var(--white);
-      padding: 32px;
-      border-radius: 16px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      background: #fff; padding: 36px; border-radius: 20px;
+      border: 1px solid #f3f4f6; transition: all 0.3s;
     }
-
-    .stars { color: #F59E0B; font-size: 20px; margin-bottom: 16px; }
-
-    .testimonial-card p {
-      color: var(--gray-600);
-      font-style: italic;
-      margin-bottom: 16px;
-      font-size: 15px;
+    .testimonial-card:hover { box-shadow: 0 10px 40px rgba(0,0,0,0.06); }
+    .testimonial-stars { color: #f59e0b; font-size: 18px; margin-bottom: 20px; letter-spacing: 2px; }
+    .testimonial-text { font-size: 16px; color: #4b5563; line-height: 1.8; font-style: italic; margin-bottom: 24px; }
+    .testimonial-author { display: flex; align-items: center; gap: 12px; }
+    .testimonial-avatar {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, #e94560, #f5a623); display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 16px;
     }
+    .testimonial-name { font-weight: 700; color: #111827; font-size: 15px; }
+    .testimonial-role { font-size: 13px; color: #9ca3af; }
 
-    .testimonial-author {
-      font-weight: 700;
-      color: var(--gray-900);
+    /* ═══════ CTA SECTION ═══════ */
+    .cta-section {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%); padding: 100px 0; text-align: center; position: relative; overflow: hidden;
     }
+    .cta-section::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 80%, rgba(233,69,96,0.15) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(245,166,35,0.1) 0%, transparent 50%); }
+    .cta-content { position: relative; z-index: 2; }
+    .cta-content h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 900; color: #fff; margin-bottom: 20px; letter-spacing: -1px; }
+    .cta-content p { font-size: 18px; color: rgba(255,255,255,0.8); max-width: 500px; margin: 0 auto 40px; }
 
-    /* CONTACT */
-    .contact {
-      padding: 100px 0;
+    /* ═══════ CONTACT ═══════ */
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+    .contact-form { display: flex; flex-direction: column; gap: 20px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #374151; }
+    .form-field input, .form-field textarea, .form-field select {
+      width: 100%; padding: 14px 18px; border: 2px solid #e5e7eb; border-radius: 12px;
+      font-size: 15px; font-family: inherit; transition: all 0.2s; background: #fff;
     }
-
-    .contact-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 64px;
+    .form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light);
     }
-
-    .contact-form {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+    .form-submit {
+      background: linear-gradient(135deg, #e94560, #f5a623); color: #fff; padding: 16px 32px; border: none;
+      border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: all 0.2s;
+      box-shadow: 0 4px 15px rgba(233,69,96,0.1);
     }
-
-    .form-group label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: var(--gray-800);
+    .form-submit:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+    .contact-info-list { display: flex; flex-direction: column; gap: 28px; }
+    .contact-info-item { display: flex; gap: 16px; align-items: flex-start; }
+    .contact-info-icon {
+      width: 52px; height: 52px; min-width: 52px; border-radius: 14px;
+      background: var(--accent-light); display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
     }
-
-    .form-group input,
-    .form-group textarea {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid var(--gray-200);
-      border-radius: 8px;
-      font-size: 16px;
-      transition: border-color 0.2s;
+    .contact-info-item h4 { font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+    .contact-info-item p { font-size: 15px; color: #6b7280; }
+    .map-container {
+      margin-top: 32px; border-radius: 16px; overflow: hidden; height: 220px;
+      background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid #e5e7eb;
     }
+    .map-container span { color: #9ca3af; font-size: 15px; }
 
-    .form-group input:focus,
-    .form-group textarea:focus {
-      outline: none;
-      border-color: var(--primary);
+    /* ═══════ FOOTER ═══════ */
+    .footer { background: #111827; color: #fff; padding: 64px 0 32px; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+    .footer-brand p { color: #9ca3af; font-size: 15px; margin-top: 16px; line-height: 1.7; }
+    .footer-col h4 { font-size: 15px; font-weight: 700; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .footer-col a { text-decoration: none; color: #9ca3af; font-size: 15px; transition: color 0.2s; }
+    .footer-col a:hover { color: #fff; }
+    .footer-bottom { border-top: 1px solid #1f2937; padding-top: 32px; display: flex; justify-content: space-between; align-items: center; }
+    .footer-bottom p { color: #6b7280; font-size: 14px; }
+    .footer-social { display: flex; gap: 16px; }
+    .footer-social a {
+      width: 40px; height: 40px; border-radius: 10px; background: #1f2937;
+      display: flex; align-items: center; justify-content: center;
+      color: #9ca3af; text-decoration: none; font-size: 18px; transition: all 0.2s;
     }
+    .footer-social a:hover { background: var(--accent); color: #fff; }
 
-    .submit-btn {
-      background: var(--primary);
-      color: var(--white);
-      padding: 16px 32px;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: opacity 0.2s;
+    /* ═══════ ANIMATIONS ═══════ */
+    .reveal { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+
+    /* ═══════ MOBILE ═══════ */
+    @media (max-width: 1024px) {
+      .services-grid, .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
     }
-
-    .submit-btn:hover { opacity: 0.9; }
-
-    .contact-info {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .contact-item {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-    }
-
-    .contact-icon {
-      font-size: 24px;
-      width: 48px;
-      height: 48px;
-      background: var(--bg);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .contact-item h4 {
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .contact-item p {
-      color: var(--gray-600);
-      font-size: 15px;
-    }
-
-    .map-embed {
-      margin-top: 32px;
-      border-radius: 16px;
-      overflow: hidden;
-      height: 250px;
-      background: var(--gray-100);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--gray-600);
-    }
-
-    /* FOOTER */
-    footer {
-      background: var(--gray-900);
-      color: var(--white);
-      padding: 48px 0 24px;
-    }
-
-    .footer-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
-      gap: 48px;
-      margin-bottom: 32px;
-    }
-
-    .footer-brand .logo { color: var(--white); }
-
-    .footer-brand p {
-      color: #9CA3AF;
-      margin-top: 12px;
-      font-size: 15px;
-    }
-
-    .footer-links h4 {
-      margin-bottom: 16px;
-      font-size: 16px;
-    }
-
-    .footer-links ul {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .footer-links a {
-      color: #9CA3AF;
-      text-decoration: none;
-      font-size: 15px;
-      transition: color 0.2s;
-    }
-
-    .footer-links a:hover { color: var(--white); }
-
-    .footer-bottom {
-      border-top: 1px solid #374151;
-      padding-top: 24px;
-      text-align: center;
-      color: #6B7280;
-      font-size: 14px;
-    }
-
-    /* MOBILE RESPONSIVE */
     @media (max-width: 768px) {
       .nav-links { display: none; }
-      .mobile-menu { display: block; }
-
-      .hero h1 { font-size: 32px; }
-      .hero p { font-size: 16px; }
+      .hamburger { display: block; }
+      .nav-links.active {
+        display: flex; flex-direction: column; position: absolute;
+        top: 72px; left: 0; right: 0; background: #fff;
+        padding: 24px; gap: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        border-bottom: 1px solid #f3f4f6;
+      }
+      .services-grid, .testimonials-grid { grid-template-columns: 1fr; }
+      .contact-grid { grid-template-columns: 1fr; gap: 48px; }
+      .form-row { grid-template-columns: 1fr; }
       .hero-stats { flex-direction: column; gap: 24px; }
-
-      .services-grid,
-      .testimonials-grid { grid-template-columns: 1fr; }
-
-      .about-grid,
-      .contact-grid { grid-template-columns: 1fr; gap: 32px; }
-
+      .stats-grid { flex-direction: column; gap: 32px; }
       .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+      .footer-bottom { flex-direction: column; gap: 16px; text-align: center; }
+      .hero { min-height: auto; padding: 140px 24px 80px; }
     }
   </style>
 </head>
 <body>
-  <!-- NAVIGATION -->
-  <nav>
+
+  <!-- NAVBAR -->
+  <nav class="navbar" id="navbar">
     <div class="container">
-      <a href="#" class="logo">Pozsonyi Kisvendéglő</a>
-      <ul class="nav-links">
+      <a href="#" class="nav-brand"><span>P</span>ozsonyi Kisvendéglő</a>
+      <ul class="nav-links" id="navLinks">
         <li><a href="#services">Szolgáltatások</a></li>
         <li><a href="#about">Rólunk</a></li>
-        <li><a href="#testimonials">Vélemények</a></li>
-        <li><a href="#contact" class="nav-cta">Kapcsolat</a></li>
+        <li><a href="#reviews">Vélemények</a></li>
+        <li><a href="#contact" class="nav-cta-btn">Asztalfoglalás</a></li>
       </ul>
-      <div class="mobile-menu">&#9776;</div>
+      <button class="hamburger" id="hamburger" aria-label="Menü">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
 
   <!-- HERO -->
   <section class="hero">
-    <div class="container">
-      <h1>Üdvözöljük a Pozsonyi Kisvendéglő oldalán</h1>
-      <p>Megbízható restaurant szolgáltatások Budapest szívében. Tapasztalt csapatunk várja Önt!</p>
-      <a href="#contact" class="hero-cta">Kérjen időpontot &rarr;</a>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span>🍽️ Budapest | restaurant</span>
+      </div>
+      <h1>Pozsonyi Kisvendéglő</h1>
+      <p class="hero-sub">Autentikus ízek, felejthetetlen élmények Budapest szívében</p>
+      <div class="hero-btns">
+        <a href="#contact" class="btn-primary">Asztalfoglalás →</a>
+        <a href="#services" class="btn-secondary">Szolgáltatásaink ↓</a>
+      </div>
       <div class="hero-stats">
-        <div class="stat">
-          <div class="stat-number">4.5</div>
-          <div class="stat-label">Google értékelés</div>
+        
+        <div class="hero-stat">
+          <div class="hero-stat-num">4.8★</div>
+          <div class="hero-stat-label">Google értékelés</div>
         </div>
-        <div class="stat">
-          <div class="stat-number">312+</div>
-          <div class="stat-label">Elégedett ügyfél</div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">2000+</div>
+          <div class="hero-stat-label">Elégedett vendég</div>
         </div>
-        <div class="stat">
-          <div class="stat-number">10+</div>
-          <div class="stat-label">Év tapasztalat</div>
+        <div class="hero-stat">
+          <div class="hero-stat-num">15+</div>
+          <div class="hero-stat-label">Év tapasztalat</div>
         </div>
       </div>
     </div>
   </section>
 
   <!-- SERVICES -->
-  <section class="services" id="services">
+  <section class="section services-section" id="services">
     <div class="container">
-      <div class="section-title">
-        <h2>Szolgáltatásaink</h2>
-        <p>Széles körű restaurant szolgáltatásokkal állunk rendelkezésére</p>
+      <div class="section-header reveal">
+        <span class="section-label">Szolgáltatások</span>
+        <h2 class="section-title">Miben segíthetünk?</h2>
+        <p class="section-desc">Teljes körű restaurant szolgáltatásaink Budapest-ban</p>
       </div>
       <div class="services-grid">
-        <div class="service-card">
-          <div class="service-icon">&#9733;</div>
-          <h3>Prémium szolgáltatás</h3>
-          <p>Kiváló minőségű szolgáltatás, személyre szabott megoldásokkal.</p>
+        
+        <div class="service-card reveal reveal-delay-1">
+          <div class="service-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+          <h3>Friss alapanyagok</h3>
+          <p>Minden nap friss, helyi alapanyagokból készítjük ételeinket a legjobb minőségben.</p>
         </div>
-        <div class="service-card">
-          <div class="service-icon">&#9201;</div>
-          <h3>Gyors kiszolgálás</h3>
-          <p>Időben és hatékonyan végezzük el a munkát, az Ön kényelméért.</p>
+        <div class="service-card reveal reveal-delay-2">
+          <div class="service-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg></div>
+          <h3>Változatos menü</h3>
+          <p>Hagyományos magyar és nemzetközi ételek széles választéka minden ízlésnek.</p>
         </div>
-        <div class="service-card">
-          <div class="service-icon">&#10003;</div>
-          <h3>Garancia</h3>
-          <p>Munkánkra garanciát vállalunk, mert bízunk a minőségben.</p>
+        <div class="service-card reveal reveal-delay-3">
+          <div class="service-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg></div>
+          <h3>Hangulatos terem</h3>
+          <p>Elegáns belső tér, amely tökéletes helyszín üzleti ebédekhez és családi vacsorákhoz.</p>
+        </div>
+        <div class="service-card reveal reveal-delay-1">
+          <div class="service-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3m0 14v3m-7-10H2m20 0h-3m-1.8-6.2l2.1-2.1M4.9 19.1l2.1-2.1m0-10L4.9 4.9M19.1 19.1l-2.1-2.1"/></svg></div>
+          <h3>Rendezvények</h3>
+          <p>Születésnap, céges vacsora vagy esküvő - bármilyen alkalomra tökéletes helyszín.</p>
+        </div>
+        <div class="service-card reveal reveal-delay-2">
+          <div class="service-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M18.36 9l.6 3H5.04l.6-3h12.72M20 4H4v2h16V4zm0 18H4v-8h16v8z"/></svg></div>
+          <h3>Házhozszállítás</h3>
+          <p>Rendeljen kényelmesen otthonról! Gyors házhozszállítás egész városban.</p>
+        </div>
+        <div class="service-card reveal reveal-delay-3">
+          <div class="service-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="40" height="40"><path d="M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 0l-1.71 2.97c-.19.3-.29.65-.29 1.03 0 1.1.9 2 2 2zm4.6 9.99l-1.07-1.07-1.08 1.07c-1.3 1.3-3.58 1.31-4.89 0l-1.07-1.07-1.09 1.07C6.75 16.64 5.88 17 4.96 17c-.73 0-1.4-.23-1.96-.61V21h18v-4.61c-.56.38-1.23.61-1.96.61-.92 0-1.79-.36-2.44-1.01zM18 9h-5V7h-2v2H6c-1.1 0-2 .9-2 2v1.46l2 2 2-2 2 2 2-2 2 2 2-2V11c0-1.1-.9-2-2-2z"/></svg></div>
+          <h3>Napi menü</h3>
+          <p>Minden hétköznap friss napi menü kedvező áron, levesválasztékkal.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ABOUT -->
-  <section class="about" id="about">
+  <!-- STATS -->
+  <section class="stats-bar">
     <div class="container">
-      <div class="about-grid">
-        <div class="about-content">
-          <h2>Rólunk</h2>
-          <p>Pozsonyi Kisvendéglő - Budapest egyik legmegbízhatóbb restaurant szolgáltatója. Évek óta dolgozunk azért, hogy ügyfeleink maximálisan elégedettek legyenek.</p>
-          <p>Csapatunk elkötelezett a minőség és a professzionális kiszolgálás iránt. Legyen szó bármilyen igényről, mi megtaláljuk a legjobb megoldást.</p>
-          <p>Büszkék vagyunk 312 elégedett ügyfelünkre és 4.5 Google értékelésünkre.</p>
+      <div class="stats-grid">
+        
+        <div class="stat-item reveal">
+          <div class="stat-num">4.8★</div>
+          <div class="stat-label">Google értékelés</div>
         </div>
-        <div class="about-image">&#127970;</div>
+        <div class="stat-item reveal">
+          <div class="stat-num">2000+</div>
+          <div class="stat-label">Elégedett vendég</div>
+        </div>
+        <div class="stat-item reveal">
+          <div class="stat-num">15+</div>
+          <div class="stat-label">Év tapasztalat</div>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- TESTIMONIALS -->
-  <section class="testimonials" id="testimonials">
+  <section class="section" id="reviews">
     <div class="container">
-      <div class="section-title">
-        <h2>Ügyfeleink mondták</h2>
-        <p>Ismerje meg elégedett ügyfeleink véleményét</p>
+      <div class="section-header reveal">
+        <span class="section-label">Vélemények</span>
+        <h2 class="section-title">Ügyfeleink mondták</h2>
+        <p class="section-desc">Büszkék vagyunk elégedett ügyfeleinkre</p>
       </div>
       <div class="testimonials-grid">
-        <div class="testimonial-card">
-          <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-          <p>"Kiváló szolgáltatás, nagyon profik és kedvesek. Csak ajánlani tudom mindenkinek!"</p>
-          <div class="testimonial-author">- Anna K.</div>
+        
+        <div class="testimonial-card reveal reveal-delay-1">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"Fantasztikus ételek és csodálatos hangulat! A gulyás egyszerűen tökéletes volt."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">S</div>
+            <div>
+              <div class="testimonial-name">Szabó Anna</div>
+              <div class="testimonial-role">Törzsvendég</div>
+            </div>
+          </div>
         </div>
-        <div class="testimonial-card">
-          <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-          <p>"Gyors, precíz munka, fair árak. Visszatérő ügyfél vagyok, mindig megbízható."</p>
-          <div class="testimonial-author">- Péter M.</div>
+        <div class="testimonial-card reveal reveal-delay-2">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"A legjobb étterem a környéken. Kedves kiszolgálás és gyönyörű belső tér."</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">N</div>
+            <div>
+              <div class="testimonial-name">Nagy Péter</div>
+              <div class="testimonial-role">Gasztro blogger</div>
+            </div>
+          </div>
         </div>
-        <div class="testimonial-card">
-          <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
-          <p>"Végre találtam egy megbízható restaurant szolgáltatót Budapest-ban. Köszönöm!"</p>
-          <div class="testimonial-author">- Eszter B.</div>
+        <div class="testimonial-card reveal reveal-delay-3">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"Minden családi ünnepet itt tartunk. Soha nem csalódtunk!"</p>
+          <div class="testimonial-author">
+            <div class="testimonial-avatar">K</div>
+            <div>
+              <div class="testimonial-name">Kiss Katalin</div>
+              <div class="testimonial-role">Rendszeres vendég</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="cta-content reveal">
+      <h2>Készen áll a kezdésre?</h2>
+      <p>Vegye fel velünk a kapcsolatot még ma, és tapasztalja meg a különbséget!</p>
+      <a href="#contact" class="btn-primary">Asztalfoglalás →</a>
+    </div>
+  </section>
+
   <!-- CONTACT -->
-  <section class="contact" id="contact">
+  <section class="section" id="contact">
     <div class="container">
-      <div class="section-title">
-        <h2>Kapcsolat</h2>
-        <p>Vegye fel velünk a kapcsolatot, szívesen segítünk!</p>
+      <div class="section-header reveal">
+        <span class="section-label">Kapcsolat</span>
+        <h2 class="section-title">Írjon nekünk</h2>
+        <p class="section-desc">Szívesen válaszolunk kérdéseire</p>
       </div>
       <div class="contact-grid">
-        <form class="contact-form" onsubmit="event.preventDefault(); alert('Köszönjük! Hamarosan felvesszük Önnel a kapcsolatot.');">
-          <div class="form-group">
-            <label>Név</label>
-            <input type="text" placeholder="Az Ön neve" required>
+        <form class="contact-form reveal" onsubmit="event.preventDefault(); this.querySelector('.form-submit').textContent='✓ Elküldve!'; this.querySelector('.form-submit').style.background='#16a34a';">
+          <div class="form-row">
+            <div class="form-field">
+              <label>Név *</label>
+              <input type="text" placeholder="Az Ön neve" required>
+            </div>
+            <div class="form-field">
+              <label>Email *</label>
+              <input type="email" placeholder="pelda@email.com" required>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" placeholder="pelda@email.com" required>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Telefon</label>
+              <input type="tel" placeholder="+36 XX XXX XXXX">
+            </div>
+            <div class="form-field">
+              <label>Tárgy</label>
+              <select>
+                <option>Időpontfoglalás</option>
+                <option>Árajánlat kérés</option>
+                <option>Általános kérdés</option>
+                <option>Egyéb</option>
+              </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Telefon</label>
-            <input type="tel" placeholder="+36 XX XXX XXXX">
-          </div>
-          <div class="form-group">
+          <div class="form-field">
             <label>Üzenet</label>
-            <textarea rows="4" placeholder="Miben segíthetünk?"></textarea>
+            <textarea rows="5" placeholder="Miben segíthetünk?"></textarea>
           </div>
-          <button type="submit" class="submit-btn">Üzenet küldése</button>
+          <button type="submit" class="form-submit">Üzenet küldése →</button>
         </form>
-        <div>
-          <div class="contact-info">
-            <div class="contact-item">
-              <div class="contact-icon">&#128205;</div>
+        <div class="reveal reveal-delay-2">
+          <div class="contact-info-list">
+            <div class="contact-info-item">
+              <div class="contact-info-icon">📍</div>
               <div>
                 <h4>Cím</h4>
                 <p>Budapest, Radnóti M. u. 38</p>
               </div>
             </div>
-            <div class="contact-item">
-              <div class="contact-icon">&#128222;</div>
+            
+            <div class="contact-info-item">
+              <div class="contact-info-icon">📞</div>
               <div>
                 <h4>Telefon</h4>
-                <p>+36 1 456 7890</p>
+                <p><a href="tel:+36 1 456 7890" style="color:#6b7280;text-decoration:none;">+36 1 456 7890</a></p>
               </div>
             </div>
             
-            <div class="contact-item">
-              <div class="contact-icon">&#128336;</div>
+            <div class="contact-info-item">
+              <div class="contact-info-icon">🕐</div>
               <div>
                 <h4>Nyitvatartás</h4>
-                <p>Hétfő - Péntek: 9:00 - 18:00<br>Szombat: 9:00 - 14:00</p>
+                <p>Hétfő – Péntek: 9:00 – 18:00<br>Szombat: 9:00 – 14:00</p>
               </div>
             </div>
           </div>
-          <div class="map-embed">
-            &#128506; Google Maps - Budapest, Radnóti M. u. 38
+          <div class="map-container">
+            <span>📍 Pozsonyi Kisvendéglő – Budapest, Radnóti M. u. 38</span>
           </div>
         </div>
       </div>
@@ -596,58 +515,87 @@
   </section>
 
   <!-- FOOTER -->
-  <footer>
+  <footer class="footer">
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <a href="#" class="logo">Pozsonyi Kisvendéglő</a>
-          <p>Megbízható restaurant szolgáltatások Budapest-ban. Évek tapasztalatával és elkötelezettségével állunk rendelkezésére.</p>
+          <a href="#" class="nav-brand" style="color:#fff;font-size:24px;text-decoration:none;"><span style="color:#e94560">P</span>ozsonyi Kisvendéglő</a>
+          <p>Autentikus ízek, felejthetetlen élmények Budapest szívében</p>
         </div>
-        <div class="footer-links">
+        <div class="footer-col">
           <h4>Navigáció</h4>
           <ul>
             <li><a href="#services">Szolgáltatások</a></li>
-            <li><a href="#about">Rólunk</a></li>
-            <li><a href="#testimonials">Vélemények</a></li>
+            <li><a href="#reviews">Vélemények</a></li>
             <li><a href="#contact">Kapcsolat</a></li>
           </ul>
         </div>
-        <div class="footer-links">
+        <div class="footer-col">
           <h4>Elérhetőség</h4>
           <ul>
-            <li><a href="#">Budapest, Radnóti M. u. 38</a></li>
+            <li><a href="#">Budapest, Magyarország</a></li>
             <li><a href="tel:+36 1 456 7890">+36 1 456 7890</a></li>
             
           </ul>
         </div>
+        <div class="footer-col">
+          <h4>Nyitvatartás</h4>
+          <ul>
+            <li><a href="#">H-P: 9:00 – 18:00</a></li>
+            <li><a href="#">Sz: 9:00 – 14:00</a></li>
+            <li><a href="#">V: Zárva</a></li>
+          </ul>
+        </div>
       </div>
       <div class="footer-bottom">
-        &copy; 2026 Pozsonyi Kisvendéglő. Minden jog fenntartva.
+        <p>&copy; 2026 Pozsonyi Kisvendéglő. Minden jog fenntartva.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="Facebook">f</a>
+          <a href="#" aria-label="Instagram">ig</a>
+          <a href="#" aria-label="Google">G</a>
+        </div>
       </div>
     </div>
   </footer>
 
   <script>
-    document.querySelector('.mobile-menu')?.addEventListener('click', () => {
-      const nav = document.querySelector('.nav-links');
-      nav.style.display = nav.style.display === 'flex' ? 'none' : 'flex';
-      nav.style.flexDirection = 'column';
-      nav.style.position = 'absolute';
-      nav.style.top = '100%';
-      nav.style.left = '0';
-      nav.style.right = '0';
-      nav.style.background = 'white';
-      nav.style.padding = '20px';
-      nav.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+    // Navbar scroll effect
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      navbar.classList.toggle('scrolled', window.scrollY > 50);
     });
 
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
+    // Mobile menu
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+      hamburger.classList.toggle('active');
+    });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
         e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) target.scrollIntoView({ behavior: 'smooth' });
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          navLinks.classList.remove('active');
+        }
       });
     });
+
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   </script>
 </body>
 </html>
