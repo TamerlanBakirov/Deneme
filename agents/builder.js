@@ -1,5 +1,6 @@
 import { loadJSON, saveJSON, updateLead, logAction, loadConfig, slugify, getLeadsByStage } from '../lib/state.js';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { generatePortfolio } from '../scripts/portfolio.js';
 
 const config = loadConfig();
 
@@ -501,7 +502,12 @@ function generateHTML(lead, diagnosis) {
       content: ''; position: absolute; inset: 0; z-index: 1;
       background: linear-gradient(135deg, rgba(15,23,42,0.88), rgba(15,23,42,0.72)), ${cat.pattern};
     }
-    .hero-content { position: relative; z-index: 2; text-align: center; max-width: 800px; }
+    /* Floating parallax orbs (mouse-reactive glow) */
+    .hero-orb { position: absolute; z-index: 2; border-radius: 50%; filter: blur(70px); pointer-events: none; animation: orbPulse 7s ease-in-out infinite alternate; transition: transform 0.4s cubic-bezier(0.2,0,0.2,1); }
+    .orb1 { width: 360px; height: 360px; background: ${cat.accent}; top: -80px; left: -60px; opacity: 0.5; }
+    .orb2 { width: 320px; height: 320px; background: #ffffff; bottom: -60px; right: -40px; opacity: 0.16; animation-delay: 2.5s; }
+    @keyframes orbPulse { from { opacity: 0.3; } to { opacity: 0.6; } }
+    .hero-content { position: relative; z-index: 3; text-align: center; max-width: 800px; transition: transform 0.1s linear; }
     @keyframes heroIn { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: translateY(0); } }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1);
@@ -562,8 +568,10 @@ function generateHTML(lead, diagnosis) {
       content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
       background: ${cat.accentGrad}; transform: scaleX(0); transform-origin: left; transition: transform 0.4s;
     }
-    .service-card:hover { transform: translateY(-8px); box-shadow: 0 20px 60px rgba(0,0,0,0.1); border-color: transparent; }
+    .service-card:hover { box-shadow: 0 20px 60px rgba(0,0,0,0.1); border-color: transparent; }
     .service-card:hover::before { transform: scaleX(1); }
+    /* 3D tilt (applied via JS on devices with a real pointer) */
+    .tilt { transform-style: preserve-3d; will-change: transform; transition: transform 0.18s ease-out, box-shadow 0.3s; }
     .service-icon-wrap {
       width: 64px; height: 64px; border-radius: 16px; background: var(--accent-light);
       display: flex; align-items: center; justify-content: center; margin-bottom: 24px; color: var(--accent);
@@ -723,8 +731,10 @@ function generateHTML(lead, diagnosis) {
   </nav>
 
   <!-- HERO -->
-  <section class="hero">
+  <section class="hero" id="hero">
     <div class="hero-bg" style="background-image: url('${src(heroUrl(photos.hero))}');"></div>
+    <div class="hero-orb orb1"></div>
+    <div class="hero-orb orb2"></div>
     <div class="hero-content">
       <div class="hero-badge"><span>${cat.icon} ${esc(lead.city)} | ${esc(lead.category)}</span></div>
       <h1>${esc(lead.name)}</h1>
@@ -753,7 +763,7 @@ function generateHTML(lead, diagnosis) {
       </div>
       <div class="services-grid">
         ${cat.services.map((s, i) => `
-        <div class="service-card reveal reveal-zoom reveal-delay-${(i % 3) + 1}">
+        <div class="service-card tilt reveal reveal-zoom reveal-delay-${(i % 3) + 1}">
           <div class="service-icon-wrap">${s.icon}</div>
           <h3 ${L({ hu: s.hu[0], en: s.en[0] })}>${esc(s.hu[0])}</h3>
           <p ${L({ hu: s.hu[1], en: s.en[1] })}>${esc(s.hu[1])}</p>
@@ -809,7 +819,7 @@ function generateHTML(lead, diagnosis) {
       </div>
       <div class="gallery-grid">
         ${photos.gallery.map((g, i) => `
-        <div class="gallery-item reveal reveal-zoom reveal-delay-${(i % 3) + 1}">
+        <div class="gallery-item tilt reveal reveal-zoom reveal-delay-${(i % 3) + 1}">
           <img src="${src(galleryUrl(g.id))}" alt="${esc(g.hu)}" loading="lazy">
           <div class="gallery-cap" ${L(g)}>${esc(g.hu)}</div>
         </div>`).join('')}
@@ -965,11 +975,55 @@ function generateHTML(lead, diagnosis) {
   </footer>
 
   <script>
-    // Navbar scroll effect
+    // Navbar scroll effect + hero parallax
     var navbar = document.getElementById('navbar');
+    var heroBg = document.querySelector('.hero-bg');
+    var heroContent = document.querySelector('.hero-content');
+    var ticking = false;
+    function onScroll() {
+      var y = window.scrollY;
+      navbar.classList.toggle('scrolled', y > 50);
+      if (y < window.innerHeight) {
+        if (heroBg) heroBg.style.backgroundPositionY = (50 + y * 0.04) + '%';
+        if (heroContent) {
+          heroContent.style.transform = 'translateY(' + (y * 0.18) + 'px)';
+          heroContent.style.opacity = Math.max(0, 1 - y / 650);
+        }
+      }
+      ticking = false;
+    }
     window.addEventListener('scroll', function () {
-      navbar.classList.toggle('scrolled', window.scrollY > 50);
+      if (!ticking) { window.requestAnimationFrame(onScroll); ticking = true; }
     });
+
+    // Mouse-reactive parallax orbs in the hero
+    var hero = document.getElementById('hero');
+    var orbs = document.querySelectorAll('.hero-orb');
+    if (hero && orbs.length && window.matchMedia('(hover: hover)').matches) {
+      hero.addEventListener('mousemove', function (e) {
+        var cx = e.clientX / window.innerWidth - 0.5;
+        var cy = e.clientY / window.innerHeight - 0.5;
+        if (orbs[0]) orbs[0].style.transform = 'translate(' + (cx * 50) + 'px,' + (cy * 50) + 'px)';
+        if (orbs[1]) orbs[1].style.transform = 'translate(' + (cx * -38) + 'px,' + (cy * -38) + 'px)';
+      });
+    }
+
+    // 3D tilt on cards (pointer devices only)
+    if (window.matchMedia('(hover: hover)').matches) {
+      var tiltEls = document.querySelectorAll('.tilt');
+      for (var ti = 0; ti < tiltEls.length; ti++) {
+        (function (el) {
+          var max = el.classList.contains('gallery-item') ? 9 : 6;
+          el.addEventListener('mousemove', function (e) {
+            var r = el.getBoundingClientRect();
+            var px = (e.clientX - r.left) / r.width - 0.5;
+            var py = (e.clientY - r.top) / r.height - 0.5;
+            el.style.transform = 'perspective(800px) rotateX(' + (-py * max) + 'deg) rotateY(' + (px * max) + 'deg) translateY(-6px)';
+          });
+          el.addEventListener('mouseleave', function () { el.style.transform = ''; });
+        })(tiltEls[ti]);
+      }
+    }
 
     // Mobile menu
     var hamburger = document.getElementById('hamburger');
@@ -1142,6 +1196,14 @@ export async function runBuilder() {
   }
 
   console.log(`[Builder] Complete. Built ${built} websites.`);
+
+  // Refresh the portfolio landing page (GitHub Pages entry point).
+  try {
+    generatePortfolio();
+  } catch (err) {
+    console.error(`[Builder] Portfolio generation failed: ${err.message}`);
+  }
+
   logAction('builder', 'run_complete', { built, total: leads.length });
 }
 
