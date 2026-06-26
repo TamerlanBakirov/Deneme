@@ -1,0 +1,14 @@
+{
+  "business_name": "Pécsi Söröző Étterem",
+  "city": "Pécs",
+  "category": "restaurant",
+  "generated_at": "2026-06-26T06:54:09.628Z",
+  "files": [
+    "index.html"
+  ],
+  "languages": [
+    "hu",
+    "en"
+  ],
+  "recommended_package": "Premium"
+}
