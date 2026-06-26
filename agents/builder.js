@@ -1,8 +1,117 @@
 import { loadJSON, saveJSON, updateLead, logAction, loadConfig, slugify, getLeadsByStage } from '../lib/state.js';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { generatePortfolio } from '../scripts/portfolio.js';
 
 const config = loadConfig();
+
+// ════════════════════════════════════════════════════════════════
+// GOOGLE MAPS PHOTOS — fetch real business photos via Places API
+// Set google_maps_api_key in config.json to enable.
+// Falls back to Unsplash stock photos when no key or no results.
+// ════════════════════════════════════════════════════════════════
+const GALLERY_CAPTIONS = {
+  restaurant: [
+    { hu: 'Belső tér', en: 'Interior' }, { hu: 'Ételeink', en: 'Our dishes' },
+    { hu: 'Hangulat', en: 'Atmosphere' }, { hu: 'Vendégtér', en: 'Dining area' },
+    { hu: 'Séf ajánlata', en: "Chef's special" }, { hu: 'Terasz', en: 'Terrace' }
+  ],
+  dentist: [
+    { hu: 'Rendelő', en: 'Clinic' }, { hu: 'Kezelőszék', en: 'Treatment chair' },
+    { hu: 'Váróterem', en: 'Waiting room' }, { hu: 'Eszközök', en: 'Equipment' },
+    { hu: 'Csapatunk', en: 'Our team' }, { hu: 'Recepció', en: 'Reception' }
+  ],
+  'hair salon': [
+    { hu: 'Szalonunk', en: 'Our salon' }, { hu: 'Hajformázás', en: 'Styling' },
+    { hu: 'Munka közben', en: 'At work' }, { hu: 'Eredmények', en: 'Results' },
+    { hu: 'Termékek', en: 'Products' }, { hu: 'Hangulat', en: 'Ambiance' }
+  ],
+  'auto repair': [
+    { hu: 'Műhelyünk', en: 'Our workshop' }, { hu: 'Szerelés', en: 'Repairs' },
+    { hu: 'Diagnosztika', en: 'Diagnostics' }, { hu: 'Eszközpark', en: 'Equipment' },
+    { hu: 'Csapatunk', en: 'Our team' }, { hu: 'Kész munkák', en: 'Finished work' }
+  ],
+  bakery: [
+    { hu: 'Pékségünk', en: 'Our bakery' }, { hu: 'Friss kenyér', en: 'Fresh bread' },
+    { hu: 'Sütemények', en: 'Pastries' }, { hu: 'Torták', en: 'Cakes' },
+    { hu: 'Kézműves termékek', en: 'Artisan goods' }, { hu: 'Bolt', en: 'Shop' }
+  ],
+  'beauty salon': [
+    { hu: 'Szalonunk', en: 'Our salon' }, { hu: 'Kezelés', en: 'Treatment' },
+    { hu: 'Eredmények', en: 'Results' }, { hu: 'Termékek', en: 'Products' },
+    { hu: 'Hangulat', en: 'Ambiance' }, { hu: 'Pihenés', en: 'Relaxation' }
+  ],
+  default: [
+    { hu: 'Üzletünk', en: 'Our business' }, { hu: 'Szolgáltatás', en: 'Service' },
+    { hu: 'Csapatunk', en: 'Our team' }, { hu: 'Munkánk', en: 'Our work' },
+    { hu: 'Környezetünk', en: 'Our space' }, { hu: 'Részletek', en: 'Details' }
+  ]
+};
+
+function getGalleryCaptions(category) {
+  return GALLERY_CAPTIONS[category] || GALLERY_CAPTIONS.default;
+}
+
+async function fetchGoogleMapsPhotos(lead) {
+  const apiKey = config.agency?.google_maps_api_key;
+  if (!apiKey) return null;
+
+  const slug = slugify(lead.name);
+  const cachePath = `database/photos/${slug}.json`;
+
+  if (existsSync(cachePath)) {
+    try {
+      const cached = loadJSON(cachePath);
+      if (cached && cached.hero) return cached;
+    } catch (_) {}
+  }
+
+  try {
+    const query = encodeURIComponent(`${lead.name} ${lead.city} Hungary`);
+    const searchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${apiKey}`;
+    const searchRes = await fetch(searchUrl);
+    const searchData = await searchRes.json();
+
+    if (searchData.status !== 'OK' || !searchData.results?.[0]?.photos) {
+      console.log(`[Builder] No Google Maps photos found for ${lead.name}`);
+      return null;
+    }
+
+    const photoRefs = searchData.results[0].photos.slice(0, 8);
+    const photos = [];
+
+    for (const ref of photoRefs) {
+      try {
+        const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photo_reference=${ref.photo_reference}&key=${apiKey}`;
+        const photoRes = await fetch(photoUrl);
+        if (!photoRes.ok) continue;
+        const buf = Buffer.from(await photoRes.arrayBuffer());
+        photos.push(`data:image/jpeg;base64,${buf.toString('base64')}`);
+      } catch (_) {}
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    if (photos.length < 3) return null;
+
+    const captions = getGalleryCaptions(lead.category);
+    const result = {
+      hero: photos[0],
+      about: photos[1] || photos[0],
+      gallery: photos.slice(2, 8).map((src, i) => ({
+        src,
+        hu: captions[i % captions.length].hu,
+        en: captions[i % captions.length].en
+      }))
+    };
+
+    mkdirSync('database/photos', { recursive: true });
+    saveJSON(cachePath, result);
+    console.log(`[Builder] Cached ${photos.length} Google Maps photos for ${lead.name}`);
+    return result;
+  } catch (err) {
+    console.error(`[Builder] Google Maps photo fetch failed for ${lead.name}: ${err.message}`);
+    return null;
+  }
+}
 
 // ════════════════════════════════════════════════════════════════
 // PHOTOS — verified Unsplash stock photos per category (free, no key).
@@ -400,10 +509,16 @@ function L(o) {
   return `data-hu="${esc(o.hu)}" data-en="${esc(o.en)}"`;
 }
 
-function generateHTML(lead, diagnosis) {
+function generateHTML(lead, diagnosis, realPhotos) {
   const cat = getCategoryData(lead.category);
   const photos = getPhotos(lead.category);
   const rating = cat.stats[0].num;
+
+  const heroImg = realPhotos ? realPhotos.hero : src(heroUrl(photos.hero));
+  const aboutImg = realPhotos ? realPhotos.about : src(aboutUrl(photos.gallery[0].id));
+  const galleryItems = realPhotos
+    ? realPhotos.gallery.map(g => ({ src: g.src, hu: g.hu, en: g.en }))
+    : photos.gallery.map(g => ({ src: src(galleryUrl(g.id)), hu: g.hu, en: g.en }));
 
   const subHu = cat.heroSub.hu(lead.city);
   const subEn = cat.heroSub.en(lead.city);
@@ -506,7 +621,17 @@ function generateHTML(lead, diagnosis) {
     .hero-orb { position: absolute; z-index: 2; border-radius: 50%; filter: blur(70px); pointer-events: none; animation: orbPulse 7s ease-in-out infinite alternate; transition: transform 0.4s cubic-bezier(0.2,0,0.2,1); }
     .orb1 { width: 360px; height: 360px; background: ${cat.accent}; top: -80px; left: -60px; opacity: 0.5; }
     .orb2 { width: 320px; height: 320px; background: #ffffff; bottom: -60px; right: -40px; opacity: 0.16; animation-delay: 2.5s; }
+    .orb3 { width: 200px; height: 200px; background: ${cat.accent}; top: 40%; right: 10%; opacity: 0.12; animation-delay: 4s; filter: blur(90px); }
     @keyframes orbPulse { from { opacity: 0.3; } to { opacity: 0.6; } }
+    /* Floating particles */
+    .hero-particles { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; }
+    .particle { position: absolute; width: 3px; height: 3px; background: rgba(255,255,255,0.4); border-radius: 50%; animation: particleFloat linear infinite; }
+    @keyframes particleFloat {
+      0% { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; }
+      10% { opacity: 1; transform: translateY(80vh) translateX(10px) scale(1); }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) translateX(-20px) scale(0.3); opacity: 0; }
+    }
     .hero-content { position: relative; z-index: 3; text-align: center; max-width: 800px; transition: transform 0.1s linear; }
     @keyframes heroIn { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: translateY(0); } }
     .hero-badge {
@@ -572,6 +697,8 @@ function generateHTML(lead, diagnosis) {
     .service-card:hover::before { transform: scaleX(1); }
     /* 3D tilt (applied via JS on devices with a real pointer) */
     .tilt { transform-style: preserve-3d; will-change: transform; transition: transform 0.18s ease-out, box-shadow 0.3s; }
+    .service-card .tilt-inner { transform: translateZ(30px); }
+    .service-card:hover { box-shadow: 0 25px 60px rgba(0,0,0,0.12), 0 0 0 1px ${cat.accentLight}; }
     .service-icon-wrap {
       width: 64px; height: 64px; border-radius: 16px; background: var(--accent-light);
       display: flex; align-items: center; justify-content: center; margin-bottom: 24px; color: var(--accent);
@@ -596,10 +723,11 @@ function generateHTML(lead, diagnosis) {
       position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; cursor: pointer;
       box-shadow: 0 4px 20px rgba(0,0,0,0.06);
     }
-    .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s; }
     .gallery-item:hover img { transform: scale(1.08); }
-    .gallery-item::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.5), transparent 60%); opacity: 0; transition: opacity 0.3s; }
+    .gallery-item::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); opacity: 0; transition: opacity 0.3s; }
     .gallery-item:hover::after { opacity: 1; }
+    .gallery-item:hover { box-shadow: 0 20px 50px rgba(0,0,0,0.25), 0 0 30px ${cat.accentLight}; z-index: 2; }
     .gallery-cap { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px; color: #fff; font-weight: 600; font-size: 15px; z-index: 2; transform: translateY(10px); opacity: 0; transition: all 0.3s; }
     .gallery-item:hover .gallery-cap { transform: translateY(0); opacity: 1; }
 
@@ -732,9 +860,11 @@ function generateHTML(lead, diagnosis) {
 
   <!-- HERO -->
   <section class="hero" id="hero">
-    <div class="hero-bg" style="background-image: url('${src(heroUrl(photos.hero))}');"></div>
+    <div class="hero-bg" style="background-image: url('${heroImg}');"></div>
     <div class="hero-orb orb1"></div>
     <div class="hero-orb orb2"></div>
+    <div class="hero-orb orb3"></div>
+    <div class="hero-particles">${Array.from({length: 12}, (_, i) => `<div class="particle" style="left:${8 + (i * 7.5)}%;animation-duration:${6 + (i % 5) * 2}s;animation-delay:${(i * 0.7).toFixed(1)}s;width:${2 + (i % 3)}px;height:${2 + (i % 3)}px;"></div>`).join('')}</div>
     <div class="hero-content">
       <div class="hero-badge"><span>${cat.icon} ${esc(lead.city)} | ${esc(lead.category)}</span></div>
       <h1>${esc(lead.name)}</h1>
@@ -786,7 +916,7 @@ function generateHTML(lead, diagnosis) {
           </ul>
         </div>
         <div class="about-img-wrap reveal reveal-delay-2">
-          <img src="${src(aboutUrl(photos.gallery[0].id))}" alt="${esc(lead.name)}" loading="lazy">
+          <img src="${aboutImg}" alt="${esc(lead.name)}" loading="lazy">
           <div class="about-badge">
             <div class="about-badge-num">${cat.stats[2].num}${cat.stats[2].suffix}</div>
             <div class="about-badge-label" ${L(cat.stats[2])}>${cat.stats[2].hu}</div>
@@ -818,9 +948,9 @@ function generateHTML(lead, diagnosis) {
         <p class="section-desc" ${L(UI.galleryDesc)}>${esc(UI.galleryDesc.hu)}</p>
       </div>
       <div class="gallery-grid">
-        ${photos.gallery.map((g, i) => `
+        ${galleryItems.map((g, i) => `
         <div class="gallery-item tilt reveal reveal-zoom reveal-delay-${(i % 3) + 1}">
-          <img src="${src(galleryUrl(g.id))}" alt="${esc(g.hu)}" loading="lazy">
+          <img src="${g.src}" alt="${esc(g.hu)}" loading="lazy">
           <div class="gallery-cap" ${L(g)}>${esc(g.hu)}</div>
         </div>`).join('')}
       </div>
@@ -1005,8 +1135,23 @@ function generateHTML(lead, diagnosis) {
         var cy = e.clientY / window.innerHeight - 0.5;
         if (orbs[0]) orbs[0].style.transform = 'translate(' + (cx * 50) + 'px,' + (cy * 50) + 'px)';
         if (orbs[1]) orbs[1].style.transform = 'translate(' + (cx * -38) + 'px,' + (cy * -38) + 'px)';
+        if (orbs[2]) orbs[2].style.transform = 'translate(' + (cx * 25) + 'px,' + (cy * -30) + 'px)';
       });
     }
+
+    // Smooth parallax for sections on scroll
+    var parallaxSections = document.querySelectorAll('.stats-bar, .cta-section');
+    function updateParallax() {
+      for (var ps = 0; ps < parallaxSections.length; ps++) {
+        var r = parallaxSections[ps].getBoundingClientRect();
+        if (r.top < window.innerHeight && r.bottom > 0) {
+          var progress = (window.innerHeight - r.top) / (window.innerHeight + r.height);
+          var bg = parallaxSections[ps].querySelector('::before') || parallaxSections[ps];
+          parallaxSections[ps].style.backgroundPositionY = (50 - (progress - 0.5) * 20) + '%';
+        }
+      }
+    }
+    window.addEventListener('scroll', function() { requestAnimationFrame(updateParallax); }, { passive: true });
 
     // 3D tilt on cards (pointer devices only)
     if (window.matchMedia('(hover: hover)').matches) {
@@ -1151,9 +1296,10 @@ export async function buildForLead(lead) {
   const diagnosisPath = `database/diagnosis/${slug}.json`;
   const diagnosis = existsSync(diagnosisPath) ? loadJSON(diagnosisPath) : null;
 
-  await prefetchPhotos(lead.category);
+  const realPhotos = await fetchGoogleMapsPhotos(lead);
+  if (!realPhotos) await prefetchPhotos(lead.category);
 
-  const html = generateHTML(lead, diagnosis);
+  const html = generateHTML(lead, diagnosis, realPhotos);
   writeFileSync(`${projectDir}/index.html`, html, 'utf-8');
 
   const metadata = {

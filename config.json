@@ -5,7 +5,8 @@
     "owner_email": "tamerlan858@gmail.com",
     "meeting_link": "google_meet",
     "meeting_email": "tamerlan858@gmail.com",
-    "timezone": "Europe/Budapest"
+    "timezone": "Europe/Budapest",
+    "google_maps_api_key": ""
   },
   "target": {
     "country": "Hungary",
