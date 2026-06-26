@@ -26,6 +26,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare site directory
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp .nojekyll _site/
+          cp -r projects _site/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -34,9 +41,7 @@ jobs:
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Publish the portfolio landing page (index.html) plus every
-          # generated business site under projects/.
-          path: .
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
